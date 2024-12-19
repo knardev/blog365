@@ -1,4 +1,4 @@
-import { QueryData } from "@/utils/types";
+import { QueryData } from "@supabase/supabase-js";
 import { createClient } from "@/utils/supabase/server";
 
 /**
@@ -7,8 +7,6 @@ import { createClient } from "@/utils/supabase/server";
  * @returns Supabase query to fetch the project
  */
 export const defineFetchProjectQuery = async (profileId: string) => {
-  // fetch project with owner of project
-  console.log(profileId);
   const query = createClient()
     .from("projects")
     .select("*")

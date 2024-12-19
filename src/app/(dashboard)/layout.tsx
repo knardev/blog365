@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import localFont from "next/font/local";
 import "../globals.css";
-import { Tables } from "@/types/database.types";
-import { getProfileData } from "@/actions/get-profile";
+import { getProfileData } from "@/features/common/actions/get-profile";
 import { Providers } from "@/components/provider";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -13,6 +13,8 @@ import {
   SidebarTrigger,
   SidebarInset,
 } from "@/components/ui/sidebar";
+import { LoggedInUser } from "@/features/common/types/types";
+import { NavHeaderWithTrigger } from "@/components/custom-ui/nav-header-with-trigger";
 
 const geistSans = localFont({
   src: "../fonts/GeistVF.woff",
@@ -35,16 +37,15 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  type Profile = Tables<"profiles">;
-  const profile: Profile | null = await getProfileData();
+  const loggedInUser: LoggedInUser | null = await getProfileData();
 
-  if (!profile) {
+  if (!loggedInUser) {
     redirect("/login");
   }
 
   return (
     <html lang="ko">
-      <Providers>
+      <Providers loggedInUser={loggedInUser}>
         <body
           className={`${geistSans.variable} ${geistMono.variable} antialiased overflow-hidden`}
         >
@@ -55,13 +56,15 @@ export default async function RootLayout({
             disableTransitionOnChange
           >
             <SidebarProvider>
-              <AppSidebar profile={profile} />
-              <SidebarInset>
-                <main className="p-4 overflow-auto h-screen">
-                  <SidebarTrigger />
-                  {children}
-                  <Toaster />
-                </main>
+              <AppSidebar />
+              <SidebarInset className="p-4">
+                <div className="flex flex-col overflow-x-auto h-full">
+                  <NavHeaderWithTrigger />
+                  <main className="overflow-auto h-full">
+                    {children}
+                    <Toaster />
+                  </main>
+                </div>
               </SidebarInset>
             </SidebarProvider>
           </ThemeProvider>

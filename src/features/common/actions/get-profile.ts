@@ -19,6 +19,7 @@ export const getProfileData = async () => {
     return null; // Return null if no user is authenticated
   }
 
+
   // Fetch the user's profile data
   const { data, error } = await supabase
     .from("profiles")
@@ -31,5 +32,5 @@ export const getProfileData = async () => {
     throw new Error("Failed to fetch profile data");
   }
 
-  return data; // Return the profile data
+  return {  profile: data, user };
 };

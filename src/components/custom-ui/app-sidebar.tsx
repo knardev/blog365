@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { Tables } from "@/types/database.types";
+import { useLoggedInUser } from "@/hooks/use-logged-in-user";
+
 import { fetchProjects } from "@/features/projects/actions/fetch-projects";
 import {
   Rss,
@@ -13,9 +14,6 @@ import {
   ScanSearch,
   ChartBarDecreasing,
 } from "lucide-react";
-
-import { NavCollapsibleMain } from "./nav-collapsible-main";
-import { NavProjects } from "./nav-projects";
 import { NavUser } from "./nav-user";
 import { ProjectSwitcher } from "./project-switcher";
 import {
@@ -33,21 +31,17 @@ import {
 } from "@/components/ui/sidebar";
 import { ModeToggle } from "@/components/custom-ui/mode-toggle";
 import { NavSecondary } from "./nav-secondary";
+import { LoggedInUser } from "@/features/common/types/types";
 
 const data = {
-  user: {
-    name: "shadcn",
-    email: "m@example.com",
-    avatar: "/avatars/shadcn.jpg",
-  },
   projectSetting: [
     {
-      title: "캐치 트래커",
-      url: "/catch",
+      title: "상위노출 추적",
+      url: "/tracker",
       icon: ChartBarDecreasing,
     },
     {
-      title: "키워드 세팅",
+      title: "키워드 관리",
       url: "/keyword",
       icon: ScanSearch,
     },
@@ -99,29 +93,24 @@ export type Project = {
   slug: string;
 };
 
-type Profile = Tables<"profiles">;
-
-export function AppSidebar({
-  profile,
-  ...props
-}: React.ComponentProps<typeof Sidebar> & {
-  profile: Profile;
-}) {
+export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const router = useRouter();
   const pathname = usePathname();
 
   const [projects, setProjects] = useState<Project[]>([]);
+  const loggedInUser = useLoggedInUser();
 
   useEffect(() => {
     const _fetchProjects = async () => {
-      const _projects = await fetchProjects(profile.id);
+      if (!loggedInUser) return;
+      const _projects = await fetchProjects(loggedInUser.profile.id);
       setProjects(
         _projects.map((project) => {
           const basePath = pathname.split("/").slice(1).join("/");
 
           const newPath =
             basePath === "blogs"
-              ? `/${project.slug}/catch`
+              ? `/${project.slug}/tracker`
               : `/${project.slug}/${basePath.split("/").slice(1).join("/")}`;
 
           return {
@@ -135,7 +124,7 @@ export function AppSidebar({
       );
     };
     _fetchProjects();
-  }, [profile.id, pathname]);
+  }, [loggedInUser, pathname]);
 
   // Determine the current project
   const currentProject =
@@ -144,10 +133,14 @@ export function AppSidebar({
       : projects.find((project) => pathname.includes(`/${project.slug}`)) ||
         projects[0];
 
+  if (!loggedInUser) return null;
   return (
     <Sidebar variant="inset" collapsible="icon" {...props}>
       <SidebarHeader>
-        <ProjectSwitcher projects={projects} />
+        <ProjectSwitcher
+          projects={projects}
+          profileId={loggedInUser.profile.id}
+        />
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
@@ -195,10 +188,10 @@ export function AppSidebar({
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-        <NavSecondary items={data.navSecondary} className="mt-auto" />
+        {/* <NavSecondary items={data.navSecondary} className="mt-auto" /> */}
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={data.user} />
+        <NavUser loggedInUser={loggedInUser} />
         <ModeToggle />
       </SidebarFooter>
     </Sidebar>

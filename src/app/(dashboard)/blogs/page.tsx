@@ -1,46 +1,44 @@
-export default function Page() {
+import { redirect } from "next/navigation";
+import { fetchBlogsWithAnalytics } from "@/features/blogs/actions/fetch-blogs-with-analytics";
+import { BlogsDataTable } from "@/features/blogs/components/blog-data-table";
+import { getProfileData } from "@/features/common/actions/get-profile";
+import { generateMockData } from "@/features/blogs/actions/mock-data";
+import { LoggedInUser } from "@/features/common/types/types";
+import { format } from "date-fns";
+
+export default async function Page() {
+  const loggedInUser: LoggedInUser | null = await getProfileData();
+
+  if (!loggedInUser) {
+    redirect("/login");
+  }
+
+  const fetchedData = await fetchBlogsWithAnalytics(loggedInUser?.profile.id);
+
+  // Collect all unique dates from blog_analytics
+  const today = new Date();
+  const allDates: string[] = Array.from({ length: 30 }, (_, index) => {
+    const date = new Date(today);
+    date.setDate(today.getDate() - index);
+    return format(date, "yyyy-MM-dd"); // Format as YYYY-MM-DD
+  }); // Ensure chronological order
+
+  // Pass raw data and allDates to the client component
   return (
-    <div>
-      <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-        <div className="grid auto-rows-min gap-4 md:grid-cols-3">
-          <div className="aspect-video rounded-xl bg-muted/50" />
-          <div className="aspect-video rounded-xl bg-muted/50" />
-          <div className="aspect-video rounded-xl bg-muted/50" />
-        </div>
-        <div className="min-h-[100vh] flex-1 rounded-xl bg-muted/50 md:min-h-min" />
-      </div>
-      <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-        <div className="grid auto-rows-min gap-4 md:grid-cols-3">
-          <div className="aspect-video rounded-xl bg-muted/50" />
-          <div className="aspect-video rounded-xl bg-muted/50" />
-          <div className="aspect-video rounded-xl bg-muted/50" />
-        </div>
-        <div className="min-h-[100vh] flex-1 rounded-xl bg-muted/50 md:min-h-min" />
-      </div>
-      <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-        <div className="grid auto-rows-min gap-4 md:grid-cols-3">
-          <div className="aspect-video rounded-xl bg-muted/50" />
-          <div className="aspect-video rounded-xl bg-muted/50" />
-          <div className="aspect-video rounded-xl bg-muted/50" />
-        </div>
-        <div className="min-h-[100vh] flex-1 rounded-xl bg-muted/50 md:min-h-min" />
-      </div>
-      <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-        <div className="grid auto-rows-min gap-4 md:grid-cols-3">
-          <div className="aspect-video rounded-xl bg-muted/50" />
-          <div className="aspect-video rounded-xl bg-muted/50" />
-          <div className="aspect-video rounded-xl bg-muted/50" />
-        </div>
-        <div className="min-h-[100vh] flex-1 rounded-xl bg-muted/50 md:min-h-min" />
-      </div>
-      <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-        <div className="grid auto-rows-min gap-4 md:grid-cols-3">
-          <div className="aspect-video rounded-xl bg-muted/50" />
-          <div className="aspect-video rounded-xl bg-muted/50" />
-          <div className="aspect-video rounded-xl bg-muted/50" />
-        </div>
-        <div className="min-h-[100vh] flex-1 rounded-xl bg-muted/50 md:min-h-min" />
-      </div>
-    </div>
+    <BlogsDataTable
+      data={fetchedData}
+      allDates={allDates}
+      profileId={loggedInUser?.profile.id}
+    />
   );
+
+  // const data = generateMockData();
+  // Collect all unique dates from mock analytics
+  // const dateSet = new Set<string>();
+  // data.forEach((blog) => {
+  //   Object.keys(blog.blog_analytics).forEach((date) => dateSet.add(date));
+  // });
+  // const allDates = Array.from(dateSet).sort();
+
+  // return <BlogsDataTable data={data} allDates={allDates} />;
 }

@@ -13,22 +13,22 @@ export type Database = {
         Row: {
           blog_id: string | null
           created_at: string
-          daily_visitor: number | null
-          date: string | null
+          daily_visitor: number
+          date: string
           id: string
         }
         Insert: {
           blog_id?: string | null
           created_at?: string
-          daily_visitor?: number | null
-          date?: string | null
+          daily_visitor?: number
+          date?: string
           id?: string
         }
         Update: {
           blog_id?: string | null
           created_at?: string
-          daily_visitor?: number | null
-          date?: string | null
+          daily_visitor?: number
+          date?: string
           id?: string
         }
         Relationships: [
@@ -43,21 +43,24 @@ export type Database = {
       }
       blogs: {
         Row: {
+          blog_slug: string
           created_at: string
           id: string
-          naver_id: string
+          name: string | null
           owner_profile_id: string | null
         }
         Insert: {
+          blog_slug: string
           created_at?: string
           id?: string
-          naver_id: string
+          name?: string | null
           owner_profile_id?: string | null
         }
         Update: {
+          blog_slug?: string
           created_at?: string
           id?: string
-          naver_id?: string
+          name?: string | null
           owner_profile_id?: string | null
         }
         Relationships: [
@@ -73,24 +76,33 @@ export type Database = {
       keyword_analytics: {
         Row: {
           created_at: string
+          daily_search_volume: number | null
           date: string | null
+          honey_index: number | null
           id: string
           keyword_id: string | null
-          montly_search: number | null
+          montly_issue_volume: number | null
+          montly_search_volume: number | null
         }
         Insert: {
           created_at?: string
+          daily_search_volume?: number | null
           date?: string | null
+          honey_index?: number | null
           id?: string
           keyword_id?: string | null
-          montly_search?: number | null
+          montly_issue_volume?: number | null
+          montly_search_volume?: number | null
         }
         Update: {
           created_at?: string
+          daily_search_volume?: number | null
           date?: string | null
+          honey_index?: number | null
           id?: string
           keyword_id?: string | null
-          montly_search?: number | null
+          montly_issue_volume?: number | null
+          montly_search_volume?: number | null
         }
         Relationships: [
           {
@@ -102,7 +114,7 @@ export type Database = {
           },
         ]
       }
-      keyword_tags: {
+      keyword_categories: {
         Row: {
           created_at: string
           id: string
@@ -135,32 +147,32 @@ export type Database = {
         Row: {
           blog_id: string | null
           created_at: string
-          date: string | null
+          date: string
           id: string
-          keyword_tracker: string | null
+          keyword_tracker: string
           post_url: string | null
           rank_in_smart_block: number | null
-          smart_block: string | null
+          smart_block_name: string | null
         }
         Insert: {
           blog_id?: string | null
           created_at?: string
-          date?: string | null
+          date: string
           id?: string
-          keyword_tracker?: string | null
+          keyword_tracker?: string
           post_url?: string | null
           rank_in_smart_block?: number | null
-          smart_block?: string | null
+          smart_block_name?: string | null
         }
         Update: {
           blog_id?: string | null
           created_at?: string
-          date?: string | null
+          date?: string
           id?: string
-          keyword_tracker?: string | null
+          keyword_tracker?: string
           post_url?: string | null
           rank_in_smart_block?: number | null
-          smart_block?: string | null
+          smart_block_name?: string | null
         }
         Relationships: [
           {
@@ -182,29 +194,39 @@ export type Database = {
       keyword_trackers: {
         Row: {
           active: boolean
+          category_id: string | null
           created_at: string
           id: string
-          keyword_id: string | null
+          keyword_id: string
           project_id: string | null
           status: Database["public"]["Enums"]["keyword_tracker_status"]
         }
         Insert: {
           active?: boolean
+          category_id?: string | null
           created_at?: string
           id?: string
-          keyword_id?: string | null
+          keyword_id: string
           project_id?: string | null
           status?: Database["public"]["Enums"]["keyword_tracker_status"]
         }
         Update: {
           active?: boolean
+          category_id?: string | null
           created_at?: string
           id?: string
-          keyword_id?: string | null
+          keyword_id?: string
           project_id?: string | null
           status?: Database["public"]["Enums"]["keyword_tracker_status"]
         }
         Relationships: [
+          {
+            foreignKeyName: "keyword_trackers_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "keyword_categories"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "keyword_trackers_keyword_id_fkey"
             columns: ["keyword_id"]
