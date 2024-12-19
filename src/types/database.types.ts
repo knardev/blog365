@@ -76,33 +76,48 @@ export type Database = {
       keyword_analytics: {
         Row: {
           created_at: string
-          daily_search_volume: number | null
+          daily_issue_volume: number
+          daily_mobile_search_volume: number
+          daily_pc_search_volume: number
+          daily_search_volume: number
           date: string | null
           honey_index: number | null
           id: string
           keyword_id: string | null
           montly_issue_volume: number | null
-          montly_search_volume: number | null
+          montly_mobile_search_volume: number
+          montly_pc_search_volume: number
+          montly_search_volume: number
         }
         Insert: {
           created_at?: string
-          daily_search_volume?: number | null
+          daily_issue_volume?: number
+          daily_mobile_search_volume?: number
+          daily_pc_search_volume?: number
+          daily_search_volume?: number
           date?: string | null
           honey_index?: number | null
           id?: string
           keyword_id?: string | null
           montly_issue_volume?: number | null
-          montly_search_volume?: number | null
+          montly_mobile_search_volume?: number
+          montly_pc_search_volume?: number
+          montly_search_volume?: number
         }
         Update: {
           created_at?: string
-          daily_search_volume?: number | null
+          daily_issue_volume?: number
+          daily_mobile_search_volume?: number
+          daily_pc_search_volume?: number
+          daily_search_volume?: number
           date?: string | null
           honey_index?: number | null
           id?: string
           keyword_id?: string | null
           montly_issue_volume?: number | null
-          montly_search_volume?: number | null
+          montly_mobile_search_volume?: number
+          montly_pc_search_volume?: number
+          montly_search_volume?: number
         }
         Relationships: [
           {
@@ -199,7 +214,6 @@ export type Database = {
           id: string
           keyword_id: string
           project_id: string | null
-          status: Database["public"]["Enums"]["keyword_tracker_status"]
         }
         Insert: {
           active?: boolean
@@ -208,7 +222,6 @@ export type Database = {
           id?: string
           keyword_id: string
           project_id?: string | null
-          status?: Database["public"]["Enums"]["keyword_tracker_status"]
         }
         Update: {
           active?: boolean
@@ -217,7 +230,6 @@ export type Database = {
           id?: string
           keyword_id?: string
           project_id?: string | null
-          status?: Database["public"]["Enums"]["keyword_tracker_status"]
         }
         Relationships: [
           {
@@ -430,29 +442,35 @@ export type Database = {
       serp_results: {
         Row: {
           created_at: string
-          data: Json | null
           date: string | null
+          detail_serp_datas: Json[] | null
           id: string
           keyword_id: string | null
-          raw_data: string | null
+          popular_topic_datas: Json[] | null
+          popular_topics: string[] | null
+          smart_block_datas: Json | null
           smart_blocks: string[] | null
         }
         Insert: {
           created_at?: string
-          data?: Json | null
           date?: string | null
+          detail_serp_datas?: Json[] | null
           id?: string
           keyword_id?: string | null
-          raw_data?: string | null
+          popular_topic_datas?: Json[] | null
+          popular_topics?: string[] | null
+          smart_block_datas?: Json | null
           smart_blocks?: string[] | null
         }
         Update: {
           created_at?: string
-          data?: Json | null
           date?: string | null
+          detail_serp_datas?: Json[] | null
           id?: string
           keyword_id?: string | null
-          raw_data?: string | null
+          popular_topic_datas?: Json[] | null
+          popular_topics?: string[] | null
+          smart_block_datas?: Json | null
           smart_blocks?: string[] | null
         }
         Relationships: [
@@ -464,6 +482,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      task_queue: {
+        Row: {
+          created_at: string
+          id: string
+          payload: Json | null
+          task_type: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          payload?: Json | null
+          task_type?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          payload?: Json | null
+          task_type?: string | null
+        }
+        Relationships: []
       }
     }
     Views: {

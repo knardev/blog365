@@ -1,6 +1,6 @@
 import { pushKeywordScrapingTasks } from "./actions";
 
-export const runtime = "edge"; // Use Edge Runtime for performance
+// export const runtime = "edge"; // Use Edge Runtime for performance
 
 export async function GET(_request: Request) {
   const incomingKey = _request.headers.get("X-Secret-Key");

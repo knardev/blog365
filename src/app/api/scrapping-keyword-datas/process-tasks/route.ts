@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { processKeywordData, saveKeywordAnalytics } from "./actions";
 
-export const runtime = "edge";
+// export const runtime = "edge";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE ?? "";
@@ -19,7 +19,7 @@ const queues = createClient(supabaseUrl, supabaseKey, {
   },
 });
 
-const MESSAGE_LIMIT = 50;
+const MESSAGE_LIMIT = 3;
 
 function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));

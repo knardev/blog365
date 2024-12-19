@@ -2,8 +2,8 @@ import { SupabaseClient } from "@supabase/supabase-js";
 import { XMLParser } from "fast-xml-parser";
 
 type VisitorCntNode = {
-  "@id": string;
-  "@cnt": string;
+  "@_id": string;
+  "@_cnt": string;
 };
 
 type ParsedXml = {
@@ -59,6 +59,8 @@ export async function processBlogVisitorData(
     });
     const parsedXml = parser.parse(xmlText) as ParsedXml;
 
+    console.log(parsedXml);
+
     const visitorCntNodes = parsedXml.visitorcnts?.visitorcnt;
 
     if (!visitorCntNodes || !Array.isArray(visitorCntNodes)) {
@@ -73,8 +75,8 @@ export async function processBlogVisitorData(
     const insertData: VisitorData[] = [];
 
     for (const node of nodesToInsert) {
-      const id = node["@id"];
-      const cnt = node["@cnt"];
+      const id = node["@_id"];
+      const cnt = node["@_cnt"];
 
       if (!id || !cnt) {
         console.warn("[WARN] Missing id or cnt attribute in node");
