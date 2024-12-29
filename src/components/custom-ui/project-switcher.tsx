@@ -59,7 +59,7 @@ export function ProjectSwitcher({ projects, profileId }: ProjectSwitcherProps) {
     if (activeProject.slug === "" && projects[0]) {
       setActiveProject(projects[0]);
     }
-  }, [projects]);
+  }, [projects, activeProject.slug]);
 
   /**
    * 2) pathname이 바뀔 때마다,

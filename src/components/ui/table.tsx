@@ -121,7 +121,7 @@ const TableHead = React.forwardRef<
     );
 
     // 기본 클래스
-    let computedClasses = [
+    const computedClasses = [
       "h-10 px-2 text-left align-middle font-medium text-muted-foreground",
       "overflow-hidden text-ellipsis whitespace-nowrap",
       "[&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px] bg-muted",
