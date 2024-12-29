@@ -12,8 +12,6 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -24,7 +22,6 @@ import {
 } from "@/components/ui/table";
 import { BlogsWithAnalytics } from "@/features/blogs/types/types";
 import { generateColumns } from "@/features/blogs/components/columns"; // Import the column generator
-import { BlogAddDialog } from "./blog-add-dialog";
 
 interface BlogsDataTableProps {
   data: BlogsWithAnalytics[];
@@ -32,11 +29,7 @@ interface BlogsDataTableProps {
   profileId: string;
 }
 
-export function BlogsDataTable({
-  data,
-  allDates,
-  profileId,
-}: BlogsDataTableProps) {
+export function BlogsDataTable({ data, allDates }: BlogsDataTableProps) {
   const columns = React.useMemo(() => generateColumns(allDates), [allDates]);
 
   // Table states
@@ -57,7 +50,7 @@ export function BlogsDataTable({
       maxSize: 500,
     },
     getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
+    // getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     onSortingChange: setSorting,
@@ -73,8 +66,7 @@ export function BlogsDataTable({
   return (
     <div className="w-full h-full space-y-4 p-2">
       {/* Filter by Naver ID */}
-      <div className="flex items-center justify-between w-full gap-2">
-        <Input
+      {/* <Input
           placeholder="블로그 ID로 검색"
           value={
             (table.getColumn("blog_slug")?.getFilterValue() as string) ?? ""
@@ -83,9 +75,7 @@ export function BlogsDataTable({
             table.getColumn("blog_slug")?.setFilterValue(event.target.value)
           }
           className="max-w-sm"
-        />
-        <BlogAddDialog profileId={profileId} revalidateTargetPath={`/blogs`} />
-      </div>
+        /> */}
 
       {/* Table Container with Horizontal Scroll */}
       <div className="relative rounded-md border max-w-full overflow-x-scroll">
@@ -94,17 +84,24 @@ export function BlogsDataTable({
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header, index) => {
-                  const isSticky = header.column.columnDef.meta?.sticky;
-                  const left = header.column.columnDef.meta?.left ?? 0;
+                  const isStickyColumn =
+                    header.column.columnDef.meta?.isStickyColumn;
+                  const isStickyRow = header.column.columnDef.meta?.isStickyRow;
+                  const stickyColumnLeft =
+                    header.column.columnDef.meta?.stickyColumnLeft ?? 0;
                   const isLastSticky =
                     header.column.columnDef.meta?.isLastSticky;
+                  const isStickyMobileColumn =
+                    header.column.columnDef.meta?.isStickyMobileColumn;
                   return (
                     <TableHead
                       key={header.id}
                       width={`${header.getSize()}px`}
-                      isSticky={isSticky}
+                      isStickyColumn={isStickyColumn}
+                      stickyColumnLeft={stickyColumnLeft}
+                      isStickyRow={isStickyRow}
+                      isStickyMobileColumn={isStickyMobileColumn}
                       isLastSticky={isLastSticky}
-                      left={isSticky ? `${left}px` : undefined}
                     >
                       {header.isPlaceholder
                         ? null
@@ -126,17 +123,51 @@ export function BlogsDataTable({
                   data-state={row.getIsSelected() && "selected"}
                 >
                   {row.getVisibleCells().map((cell, index) => {
-                    const isSticky = cell.column.columnDef.meta?.sticky;
-                    const left = cell.column.columnDef.meta?.left ?? 0;
+                    const isStickyColumn =
+                      cell.column.columnDef.meta?.isStickyColumn;
+                    const stickyColumnLeft =
+                      cell.column.columnDef.meta?.stickyColumnLeft ?? 0;
+                    const isStickyRow = cell.column.columnDef.meta?.isStickyRow;
                     const isLastSticky =
                       cell.column.columnDef.meta?.isLastSticky;
+                    const isStickyMobileColumn =
+                      cell.column.columnDef.meta?.isStickyMobileColumn;
+
+                    // Get the cell value as a number for color logic
+                    const cellValue = Number(cell.getValue()) || 0;
+
+                    // Determine background color based on the value
+                    const getBackgroundColor = (value: number) => {
+                      if (value >= 1000) return "#15803d";
+                      if (value >= 500) return "#22c55e";
+                      if (value >= 100) return "#86efac";
+                      if (value > 0) return "#dcfce7";
+                      return "#fff";
+                    };
+
+                    const getTextClass = (value: number) => {
+                      if (value >= 1000) return "text-white";
+                      if (value >= 500) return "text-slate-800";
+                      if (value >= 100) return "text-slate-800";
+                      if (value > 0) return "text-slate-800";
+                      return "text-muted-foreground";
+                    };
+
+                    const textClass = isStickyColumn
+                      ? ""
+                      : getTextClass(cellValue);
+
                     return (
                       <TableCell
                         key={cell.id}
                         width={`${cell.column.getSize()}px`}
-                        isSticky={isSticky}
+                        isStickyColumn={isStickyColumn}
+                        stickyColumnLeft={stickyColumnLeft}
+                        isStickyRow={isStickyRow}
+                        isStickyMobileColumn={isStickyMobileColumn}
                         isLastSticky={isLastSticky}
-                        left={isSticky ? `${left}px` : undefined}
+                        backgroundColor={getBackgroundColor(cellValue)}
+                        className={textClass}
                       >
                         {flexRender(
                           cell.column.columnDef.cell,
@@ -162,7 +193,7 @@ export function BlogsDataTable({
       </div>
 
       {/* Pagination Controls */}
-      <div className="flex items-center justify-end space-x-2 py-4">
+      {/* <div className="flex items-center justify-end space-x-2 py-4">
         <Button
           variant="outline"
           size="sm"
@@ -179,7 +210,7 @@ export function BlogsDataTable({
         >
           다음
         </Button>
-      </div>
+      </div> */}
     </div>
   );
 }

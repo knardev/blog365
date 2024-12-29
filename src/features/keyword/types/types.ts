@@ -1,5 +1,5 @@
 import { Tables } from "@/types/database.types";
-import { KeywordTracker } from "../queries/define-fetch-keyword-trackers";
+import { KeywordTracker } from "../../tracker/queries/define-fetch-keyword-trackers";
 
 // Define the type for keyword analytics
 type KeywordAnalytics = Tables<"keyword_analytics">;

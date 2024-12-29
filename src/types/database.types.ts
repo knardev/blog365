@@ -308,22 +308,67 @@ export type Database = {
           },
         ]
       }
+      message_targets: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          phone_number: string | null
+          profile_id: string | null
+          project_id: string | null
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          phone_number?: string | null
+          profile_id?: string | null
+          project_id?: string | null
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          phone_number?: string | null
+          profile_id?: string | null
+          project_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_targets_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_targets_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
           id: string
+          phone_number: string | null
           profile_image_url: string | null
           user_id: string | null
         }
         Insert: {
           created_at?: string
           id?: string
+          phone_number?: string | null
           profile_image_url?: string | null
           user_id?: string | null
         }
         Update: {
           created_at?: string
           id?: string
+          phone_number?: string | null
           profile_image_url?: string | null
           user_id?: string | null
         }
@@ -364,24 +409,24 @@ export type Database = {
       projects_blogs: {
         Row: {
           active: boolean
-          blog_id: string | null
+          blog_id: string
           created_at: string
           id: string
-          project_id: string | null
+          project_id: string
         }
         Insert: {
           active?: boolean
-          blog_id?: string | null
+          blog_id: string
           created_at?: string
           id?: string
-          project_id?: string | null
+          project_id: string
         }
         Update: {
           active?: boolean
-          blog_id?: string | null
+          blog_id?: string
           created_at?: string
           id?: string
-          project_id?: string | null
+          project_id?: string
         }
         Relationships: [
           {
@@ -400,50 +445,11 @@ export type Database = {
           },
         ]
       }
-      report_messages: {
-        Row: {
-          content: string | null
-          created_at: string
-          id: string
-          project_id: string | null
-          received_profile_id: string | null
-        }
-        Insert: {
-          content?: string | null
-          created_at?: string
-          id?: string
-          project_id?: string | null
-          received_profile_id?: string | null
-        }
-        Update: {
-          content?: string | null
-          created_at?: string
-          id?: string
-          project_id?: string | null
-          received_profile_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "report_messages_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "report_messages_received_profile_id_fkey"
-            columns: ["received_profile_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       serp_results: {
         Row: {
+          basic_block_datas: Json[] | null
           created_at: string
           date: string | null
-          detail_serp_datas: Json[] | null
           id: string
           keyword_id: string | null
           popular_topic_datas: Json[] | null
@@ -452,9 +458,9 @@ export type Database = {
           smart_blocks: string[] | null
         }
         Insert: {
+          basic_block_datas?: Json[] | null
           created_at?: string
           date?: string | null
-          detail_serp_datas?: Json[] | null
           id?: string
           keyword_id?: string | null
           popular_topic_datas?: Json[] | null
@@ -463,9 +469,9 @@ export type Database = {
           smart_blocks?: string[] | null
         }
         Update: {
+          basic_block_datas?: Json[] | null
           created_at?: string
           date?: string | null
-          detail_serp_datas?: Json[] | null
           id?: string
           keyword_id?: string | null
           popular_topic_datas?: Json[] | null
@@ -482,27 +488,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      task_queue: {
-        Row: {
-          created_at: string
-          id: string
-          payload: Json | null
-          task_type: string | null
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          payload?: Json | null
-          task_type?: string | null
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          payload?: Json | null
-          task_type?: string | null
-        }
-        Relationships: []
       }
     }
     Views: {

@@ -3,7 +3,7 @@
 import { createClient } from "@/utils/supabase/server";
 import { defineAddKeyword } from "@/features/keyword/queries/define-add-keyword";
 import { defineFilterKeyword } from "@/features/keyword/queries/define-filter-keyword";
-import { defineAddKeywordTrackerQuery } from "../queries/define-add-keyword-tracker";
+import { defineAddKeywordTrackerQuery } from "@/features/tracker/queries/define-add-keyword-tracker";
 import { revalidatePath } from "next/cache";
 
 /**
@@ -44,9 +44,10 @@ export async function addKeywordTracker({
   }
 
   // Step 1: Try to filter the keyword by name
-  const { data: filteredKeyword, error: filterError } = await defineFilterKeyword(
-    keywordName
-  );
+  const { data: filteredKeyword, error: filterError } =
+    await defineFilterKeyword(
+      keywordName,
+    );
 
   if (filterError && filterError.code !== "PGRST116") {
     console.error("Error filtering keyword:", filterError);
@@ -57,9 +58,10 @@ export async function addKeywordTracker({
 
   // Step 2: If the keyword does not exist, add it
   if (!keywordId) {
-    const { data: addedKeyword, error: addKeywordError } = await defineAddKeyword(
-      keywordName
-    );
+    const { data: addedKeyword, error: addKeywordError } =
+      await defineAddKeyword(
+        keywordName,
+      );
 
     if (addKeywordError) {
       console.error("Error adding keyword:", addKeywordError);
@@ -77,7 +79,7 @@ export async function addKeywordTracker({
   const { data, error: trackerError } = await defineAddKeywordTrackerQuery(
     projectId,
     keywordId,
-    categoryId // Undefined if not provided
+    categoryId, // Undefined if not provided
   );
 
   if (trackerError) {

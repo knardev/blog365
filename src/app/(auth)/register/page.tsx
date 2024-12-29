@@ -41,7 +41,7 @@ export default async function login({
         <CardContent className="flex flex-col gap-4">
           <OAuthButtons lastSignedInMethod={lastSignedInMethod} />
           <Separator className="my-2" />
-          <form id="login-form" className="grid gap-4">
+          {/* <form id="login-form" className="grid gap-4">
             <div className="grid gap-2">
               <Label htmlFor="email">이메일</Label>
               <Input
@@ -79,7 +79,7 @@ export default async function login({
               )}
             </Button>
           </form>
-          <Separator className="my-2" />
+          <Separator className="my-2" /> */}
           <div className="text-center text-sm">
             이미 계정이 있으신가요?{" "}
             <Link href="/login" passHref>

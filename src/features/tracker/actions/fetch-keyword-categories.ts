@@ -1,8 +1,8 @@
 "use server";
 
 import { createClient } from "@/utils/supabase/server";
-import { defineFetchKeywordCategories } from "../queries/define-fetch-keyword-categories";
-import { KeywordCategories } from "../queries/define-fetch-keyword-categories";
+import { defineFetchKeywordCategoriesQuery } from "@/features/tracker/queries/define-fetch-keyword-categories";
+import { KeywordCategories } from "@/features/tracker/queries/define-fetch-keyword-categories";
 /**
  * Action to fetch all keywords
  * @param projectSlug - The slug of the project to fetch keywords for
@@ -13,7 +13,7 @@ export async function fetchKeywordCategories(projectSlug: string): Promise<
 > {
   // Fetch keywords using defineFetchKeywords
 
-    const { data: projectData, error: projectError } = await createClient()
+  const { data: projectData, error: projectError } = await createClient()
     .from("projects")
     .select("id")
     .eq("slug", projectSlug)
@@ -30,7 +30,7 @@ export async function fetchKeywordCategories(projectSlug: string): Promise<
     throw new Error("Project not found");
   }
 
-  const query = defineFetchKeywordCategories(projectId);
+  const query = defineFetchKeywordCategoriesQuery(projectId);
   const { data, error } = await query;
 
   if (error) {

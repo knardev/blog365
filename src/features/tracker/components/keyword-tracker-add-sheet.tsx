@@ -1,14 +1,16 @@
 "use client";
-
-import React, { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
+import React, { useState } from "react";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -26,22 +28,19 @@ import {
   CommandInput,
 } from "@/components/ui/command";
 import { cn } from "@/utils/shadcn/utils";
-import { addKeywordTracker } from "@/features/keyword/actions/add-keyword-tracker";
-import { KeywordCategories } from "@/features/keyword/queries/define-fetch-keyword-categories";
+import { addKeywordTracker } from "@/features/tracker/actions/add-keyword-tracker";
+import { KeywordCategories } from "@/features/tracker/queries/define-fetch-keyword-categories";
 
-export function KeywordTrackerAddDialog({
+export function KeywordTrackerAddSheet({
   projectSlug,
-  revalidateTargetPath,
   keywordCategories,
 }: {
   projectSlug: string;
-  revalidateTargetPath: string;
   keywordCategories: KeywordCategories[];
 }) {
   const [keyword, setKeyword] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [openDialog, setOpenDialog] = useState(false);
   const [openPopover, setOpenPopover] = useState(false);
 
   const selectedCategoryLabel = keywordCategories.find(
@@ -57,7 +56,7 @@ export function KeywordTrackerAddDialog({
         projectSlug,
         keywordName: keyword,
         categoryId: selectedCategory || undefined,
-        revalidateTargetPath,
+        revalidateTargetPath: `/${projectSlug}/tracker`,
       });
     } catch (error) {
       console.error("Error adding keyword tracker:", error);
@@ -65,35 +64,24 @@ export function KeywordTrackerAddDialog({
       setIsSaving(false);
       setKeyword("");
       setSelectedCategory(null);
-      setOpenDialog(false);
     }
   };
 
   return (
-    <Dialog
-      onOpenChange={(isOpen) => {
-        setOpenDialog(isOpen);
-        if (!isOpen) {
-          setKeyword("");
-          setSelectedCategory(null);
-          setOpenPopover(false);
-        }
-      }}
-      open={openDialog}
-    >
-      <DialogTrigger asChild>
+    <Sheet>
+      <SheetTrigger asChild>
         <Button variant="outline" size="sm">
           + 키워드 추가
         </Button>
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>추적 키워드 추가</DialogTitle>
-        </DialogHeader>
-        <div className="flex flex-col space-y-4">
-          <p className="text-sm text-gray-600">
+      </SheetTrigger>
+      <SheetContent>
+        <SheetHeader>
+          <SheetTitle>추적 키워드 추가</SheetTitle>
+          <SheetDescription>
             추적할 키워드와 카테고리를 선택하세요.
-          </p>
+          </SheetDescription>
+        </SheetHeader>
+        <div className="mt-4 space-y-4">
           <div className="flex flex-col space-y-2">
             <Label htmlFor="keyword">키워드</Label>
             <Input
@@ -150,6 +138,8 @@ export function KeywordTrackerAddDialog({
               </PopoverContent>
             </Popover>
           </div>
+        </div>
+        <SheetFooter className="mt-4">
           <Button
             variant="default"
             className="self-end"
@@ -158,8 +148,8 @@ export function KeywordTrackerAddDialog({
           >
             {isSaving ? "저장 중..." : "저장"}
           </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
   );
 }

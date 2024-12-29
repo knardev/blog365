@@ -1,5 +1,7 @@
 import { ColumnDef } from "@tanstack/react-table";
 import { BlogsWithAnalytics } from "@/features/blogs/types/types";
+import { format } from "date-fns";
+import { ko } from "date-fns/locale";
 
 export function generateColumns(
   allDates: string[]
@@ -16,11 +18,13 @@ export function generateColumns(
           <p>별칭</p>
         </div>
       ),
-      size: 100, // Fixed width
+      size: 80, // Fixed width
       meta: {
-        sticky: true,
+        isStickyColumn: true,
+        stickyColumnLeft: 0,
+        isStickyRow: true,
         isLastSticky: false,
-        left: 0,
+        isStickyMobileColumn: true,
       },
     },
     {
@@ -33,49 +37,48 @@ export function generateColumns(
           <p>블로그 ID</p>
         </div>
       ),
-      size: 150, // Fixed width
+      cell: ({ row }) => {
+        // a tag https://search.naver.com/search.naver?where=nexearch&sm=top_hty&fbm=0&ie=utf8&query=%EA%B5%AC%EB%AF%B8%EB%8F%99%EC%B9%98%EA%B3%BC
+
+        const original = row.original;
+        return (
+          <div>
+            <a
+              href={`https://blog.naver.com/${original.blog_slug}`}
+              target="_blank"
+              rel="noreferrer"
+              className=""
+            >
+              {original.blog_slug}
+            </a>
+          </div>
+        );
+      },
+      size: 130, // Fixed width
       meta: {
-        sticky: true,
+        isStickyColumn: true,
+        stickyColumnLeft: 80,
+        isStickyRow: true,
         isLastSticky: true,
-        left: 100,
+        isStickyMobileColumn: false,
       },
     },
-    // {
-    //   accessorKey: "created_at",
-    //   header: ({ column }) => (
-    //     <div
-    //       onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-    //       className="cursor-pointer flex items-center"
-    //     >
-    //       <p>작성일</p>
-    //     </div>
-    //   ),
-    //   cell: ({ row }) => {
-    //     const date = new Date(row.original.created_at);
-    //     return new Intl.DateTimeFormat("ko-KR", {
-    //       year: "numeric",
-    //       month: "2-digit",
-    //       day: "2-digit",
-    //     }).format(date);
-    //   },
-    //   size: 150, // Fixed width
-    // },
   ];
 
   // Dynamic columns based on dates
   const dynamicColumns: ColumnDef<BlogsWithAnalytics>[] = allDates.map(
     (date) => ({
-      accessorFn: (row) => row.blog_analytics[date]?.daily_visitor ?? null,
-      header: date,
+      accessorFn: (row) => row.blog_analytics[date]?.daily_visitor ?? 0,
+      header: format(new Date(date), "MM/dd (EEE)", { locale: ko }),
       cell: ({ row }) => {
-        const dailyVisitor = row.original.blog_analytics[date]?.daily_visitor;
-        return dailyVisitor !== null ? dailyVisitor : "N/A";
+        const dailyVisitor =
+          row.original.blog_analytics[date]?.daily_visitor ?? 0;
+        return <div className="text-center select-none">{dailyVisitor}</div>;
       },
-      size: 100,
+      size: 50,
       meta: {
-        // sticky: true,
-        // headerClassName: "w-[10px]", // min-width, taking
-        // cellClassName: "w-[40px]", // fixed width
+        isStickyRow: true,
+        isStickyColumn: false,
       },
     })
   );

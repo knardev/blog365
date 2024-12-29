@@ -1,140 +1,255 @@
 "use server";
 
-import { defineFetchKeywordTrackerWithResultsQuery } from "../queries/define-fetch-keyword-tracker-with-results";
-import { KeywordTrackerWithResults, KeywordTrackerResultsMap, DailyResult, CatchResult } from "../types/types";
+import {
+  DailyResult,
+  KeywordTrackerTransformed,
+  KeywordTrackerWithResults,
+  KeywordTrackerWithResultsResponse,
+  MergedDataRow,
+} from "../types/types";
 import { createClient } from "@/utils/supabase/server";
-
-/**
- * Action to fetch keyword trackers and transform the data
- * @param projectSlug - The slug of the project to fetch keyword trackers for
- * @param startDate - (Optional) The start date for filtering results
- * @param endDate - (Optional) The end date for filtering results
- * @returns Transformed keyword trackers with results
- */
+import {
+  defineFetchKeywordAnalyticsQuery,
+} from "@/features/tracker/queries/define-fetch-keyword-analytics";
+import {
+  defineFetchKeywordTrackerResultsQuery,
+} from "@/features/tracker/queries/define-fetch-keyword-tracker-result";
+import {
+  defineFetchKeywordTrackerWithCategoriesQuery,
+} from "@/features/tracker/queries/define-fetch-keyword-tracker-with-catgory";
 
 export async function fetchKeywordTrackerWithResults(
   projectSlug: string,
   startDate?: string,
-  endDate?: string
-): Promise<KeywordTrackerWithResults[] | null> {
+  endDate?: string,
+): Promise<KeywordTrackerWithResultsResponse | null> {
   const { data: projectData, error: projectError } = await createClient()
     .from("projects")
     .select("id")
     .eq("slug", projectSlug)
-    .single(); // single() ensures only one project is fetched
+    .single();
 
-    if (projectError) {
-      console.error("Error fetching project by slug:", projectError);
-      return null;
-    }
-
-    const projectId = projectData?.id;
-
-
-  // Fetch keyword trackers and results
-  const query = await defineFetchKeywordTrackerWithResultsQuery(projectId, startDate, endDate);
-
-  const { data, error } = query;
-  
-  if (error) {
-    console.error("Error fetching keyword tracker with results:", error);
-    throw new Error("Failed to fetch keyword tracker with results");
+  if (projectError || !projectData) {
+    console.error("Error fetching project by slug:", projectError);
+    return null;
   }
 
-  // Transform data into KeywordTrackerWithResults[]
-  const transformedData: KeywordTrackerWithResults[] = data.map((tracker) => {
-    const resultsMap: KeywordTrackerResultsMap = {};
+  const projectId = projectData.id;
 
-    // Process keyword_tracker_results
-    tracker.keyword_tracker_results.forEach((result) => {
-      const date = result.date;
-      if (!resultsMap[date]) {
-        resultsMap[date] = { catch_success: 0, catch_result: [] };
-      }
+  // 1) 키워드 트래커 목록 가져오기
+  const trackerQuery = await defineFetchKeywordTrackerWithCategoriesQuery(
+    projectId,
+  );
+  const { data: trackersData, error: trackersError } = trackerQuery;
 
-      resultsMap[date].catch_success += 1;
-
-      resultsMap[date].catch_result.push({
-        post_url: result.post_url ?? "N/A",
-        rank_in_smart_block: result.rank_in_smart_block ?? -1,
-      });
-    });
-
-    // Filter keyword_analytics to retain only the most recent entry
-    const latestKeywordAnalytics =
-      tracker.keywords?.keyword_analytics?.sort(
-        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      )[0] ?? null;
-
+  if (trackersError) {
+    console.error("Error fetching trackers:", trackersError);
+    return null;
+  }
+  if (!trackersData || trackersData.length === 0) {
     return {
-      ...tracker,
-      keyword_analytics: latestKeywordAnalytics,
-      keyword_tracker_results: resultsMap,
+      keyword_trackers: [],
+      potential_exposure: 0,
+      today_catch_count: 0,
+      week_catch_count: 0,
     };
-  });
+  }
 
-  // console.log(transformedData);
+  const mergedData: MergedDataRow[] = [];
 
-  return transformedData;
+  for (const tracker of trackersData) {
+    // (1) 최신 키워드 분석 가져오기
+    const keywordId = tracker.keywords?.id;
+    let latestAnalytics = null;
+    if (keywordId) {
+      const analyticsQuery = await defineFetchKeywordAnalyticsQuery(keywordId);
+      const { data: analyticsArray, error: analyticsError } = analyticsQuery;
+      if (analyticsError) {
+        console.error("Error fetching analytics:", analyticsError);
+      }
+      latestAnalytics = analyticsArray?.[0] ?? null;
+    }
+
+    // (2) 키워드 추적 결과 가져오기
+    const resultsQuery = await defineFetchKeywordTrackerResultsQuery(
+      tracker.id,
+      startDate,
+      endDate,
+    );
+    const { data: resultsArray, error: resultsError } = resultsQuery;
+    if (resultsError) {
+      console.error("Error fetching results:", resultsError);
+    }
+
+    // (3) 병합 데이터에 추가
+    mergedData.push({
+      ...tracker,
+      keyword_analytics: latestAnalytics ?? {
+        id: "",
+        date: "",
+        created_at: "",
+        keyword_id: "",
+        honey_index: null,
+        daily_issue_volume: 0,
+        daily_search_volume: 0,
+        montly_issue_volume: 0,
+        montly_search_volume: 0,
+        daily_pc_search_volume: 0,
+        montly_pc_search_volume: 0,
+        daily_mobile_search_volume: 0,
+        montly_mobile_search_volume: 0,
+      },
+      raw_results: resultsArray ?? [],
+    });
+  }
+
+  // 2) transformedData 생성
+  const today = new Date().toISOString().slice(0, 10);
+  const weekAgo = new Date();
+  weekAgo.setDate(weekAgo.getDate() - 7);
+  const weekAgoDate = weekAgo.toISOString().slice(0, 10);
+
+  const transformedData: KeywordTrackerTransformed[] = mergedData.map(
+    (tracker) => {
+      const resultsMap: Record<string, DailyResult> = {};
+
+      // 날짜별 결과 매핑
+      tracker.raw_results.forEach((result) => {
+        const date = result.date;
+        if (!resultsMap[date]) {
+          resultsMap[date] = { catch_success: 0, catch_result: [] };
+        }
+
+        // 성공 여부 계산
+        if (
+          result.smart_block_name?.includes("인기글") &&
+          result.rank_in_smart_block !== null &&
+          result.rank_in_smart_block <= 7
+        ) {
+          resultsMap[date].catch_success += 1;
+        } else if (
+          result.rank_in_smart_block !== null &&
+          result.rank_in_smart_block <= 3
+        ) {
+          resultsMap[date].catch_success += 1;
+        }
+
+        resultsMap[date].catch_result.push({
+          post_url: result.post_url ?? "N/A",
+          smart_block_name: result.smart_block_name ?? "N/A",
+          rank_in_smart_block: result.rank_in_smart_block ?? -1,
+        });
+
+        // 정렬
+        resultsMap[date].catch_result.sort(
+          (a, b) => a.rank_in_smart_block - b.rank_in_smart_block,
+        );
+      });
+
+      // 오늘 날짜의 일간 첫페이지 노출량 계산
+      const todayResult = resultsMap[today];
+      const dailyFirstPageExposure = (todayResult?.catch_success ?? 0) *
+        (tracker.keyword_analytics.daily_search_volume ?? 0);
+
+      return {
+        ...tracker,
+        keyword_tracker_results: resultsMap,
+        keyword_analytics: {
+          ...tracker.keyword_analytics,
+          daily_first_page_exposure: dailyFirstPageExposure,
+        },
+      };
+    },
+  );
+
+  // 3) 잠재노출량 및 키워드 잡힌 개수 계산
+  const potentialExposure = transformedData.reduce((total, tracker) => {
+    return (
+      total + (tracker.keyword_analytics.daily_first_page_exposure ?? 0)
+    );
+  }, 0) * 0.2;
+
+  const todayCatchCount = transformedData.filter((tracker) => {
+    const todayResult = tracker.keyword_tracker_results[today];
+    return todayResult?.catch_success ?? 0 > 0;
+  }).length;
+
+  const weekCatchCount = transformedData.filter((tracker) => {
+    const weekAgoResult = tracker.keyword_tracker_results[weekAgoDate];
+    return weekAgoResult?.catch_success ?? 0 > 0;
+  }).length;
+
+  // 4) 최종 결과 반환
+  return {
+    keyword_trackers: transformedData,
+    potential_exposure: potentialExposure,
+    today_catch_count: todayCatchCount,
+    week_catch_count: weekCatchCount,
+  };
 }
 
-// 예시 데이터:
-// [
-//   {
-//     id: '7831f8eb-9d50-43e7-a718-c1835f6bd243',
-//     created_at: '2024-12-09T15:26:50.21625+00:00',
-//     keyword_id: 'ea4d9994-3cc5-49cb-8456-8b4ee3ccaa9b',
-//     active: true,
-//     status: 'WAITING',
-//     project_id: 'a97699d0-809c-4d7f-bb02-4441637bff87',
-//     category_id: '9ae00f8a-e9a5-44ab-af4c-276ac733ddef',
-//     keywords: {
-//       id: 'ea4d9994-3cc5-49cb-8456-8b4ee3ccaa9b',
-//       name: '미금역치과',
-//       created_at: '2024-12-09T15:24:23.746323+00:00',
-//       keyword_analytics: [Array]
-//     },
-//     keyword_categories: {
-//       id: '9ae00f8a-e9a5-44ab-af4c-276ac733ddef',
-//       name: '0군',
-//       created_at: '2024-12-12T13:07:08.499886+00:00',
-//       project_id: 'a97699d0-809c-4d7f-bb02-4441637bff87'
-//     },
-//     keyword_tracker_results: { '2024-12-10': [Object], '2024-12-11': [Object] },
-//     projects: { slug: 'mgsebrance' },
-//     keyword_analytics: {
-//       id: 'bffd396e-3d0c-4375-be4f-6fafbc6361b5',
-//       date: '2024-12-10',
-//       created_at: '2024-12-09T15:58:51.467753+00:00',
-//       keyword_id: 'ea4d9994-3cc5-49cb-8456-8b4ee3ccaa9b',
-//       honey_index: 100,
-//       daily_search_volume: 100,
-//       montly_issue_volume: 200,
-//       montly_search_volume: 100
+// {
+//   "data": [
+//     {
+//       "id": "7831f8eb-9d50-43e7-a718-c1835f6bd243",
+//       "created_at": "2024-12-09T15:26:50.21625+00:00",
+//       "keyword_id": "ea4d9994-3cc5-49cb-8456-8b4ee3ccaa9b",
+//       "active": true,
+//       "status": "WAITING",
+//       "project_id": "a97699d0-809c-4d7f-bb02-4441637bff87",
+//       "category_id": "9ae00f8a-e9a5-44ab-af4c-276ac733ddef",
+//       "keywords": {
+//         "id": "ea4d9994-3cc5-49cb-8456-8b4ee3ccaa9b",
+//         "name": "미금역치과",
+//         "created_at": "2024-12-09T15:24:23.746323+00:00"
+//       },
+//       "keyword_categories": {
+//         "id": "9ae00f8a-e9a5-44ab-af4c-276ac733ddef",
+//         "name": "0군",
+//         "created_at": "2024-12-12T13:07:08.499886+00:00",
+//         "project_id": "a97699d0-809c-4d7f-bb02-4441637bff87"
+//       },
+//       "keyword_tracker_results": {
+//         "2024-12-10": {
+//           "catch_success": 3,
+//           "catch_result": [
+//             {
+//               "post_url": "https://example.com/post1",
+//               "smart_block_name": "인기글",
+//               "rank_in_smart_block": 1
+//             },
+//             {
+//               "post_url": "https://example.com/post2",
+//               "smart_block_name": "인기글",
+//               "rank_in_smart_block": 2
+//             }
+//           ]
+//         },
+//         "2024-12-11": {
+//           "catch_success": 2,
+//           "catch_result": [
+//             {
+//               "post_url": "https://example.com/post3",
+//               "smart_block_name": "추천글",
+//               "rank_in_smart_block": 1
+//             }
+//           ]
+//         }
+//       },
+//       "keyword_analytics": {
+//         "id": "bffd396e-3d0c-4375-be4f-6fafbc6361b5",
+//         "date": "2024-12-10",
+//         "created_at": "2024-12-09T15:58:51.467753+00:00",
+//         "keyword_id": "ea4d9994-3cc5-49cb-8456-8b4ee3ccaa9b",
+//         "honey_index": 100,
+//         "daily_search_volume": 100,
+//         "montly_issue_volume": 200,
+//         "montly_search_volume": 100,
+//         "daily_first_page_exposure": 300
+//       }
 //     }
-//   },
-//   {
-//     id: 'a7eb50f7-538d-48a5-8ad0-275da3aee191',
-//     created_at: '2024-12-12T13:09:49.621258+00:00',
-//     keyword_id: '0a7e1b7c-9223-4919-b00d-da2ba00db1f8',
-//     active: true,
-//     status: 'WAITING',
-//     project_id: 'a97699d0-809c-4d7f-bb02-4441637bff87',
-//     category_id: '9ae00f8a-e9a5-44ab-af4c-276ac733ddef',
-//     keywords: {
-//       id: '0a7e1b7c-9223-4919-b00d-da2ba00db1f8',
-//       name: '미금치과',
-//       created_at: '2024-12-12T13:06:47.302449+00:00',
-//       keyword_analytics: []
-//     },
-//     keyword_categories: {
-//       id: '9ae00f8a-e9a5-44ab-af4c-276ac733ddef',
-//       name: '0군',
-//       created_at: '2024-12-12T13:07:08.499886+00:00',
-//       project_id: 'a97699d0-809c-4d7f-bb02-4441637bff87'
-//     },
-//     keyword_tracker_results: {},
-//     projects: { slug: 'mgsebrance' },
-//     keyword_analytics: null
-//   }
-// ]
+//   ],
+//   "potential_exposure": 60
+//   "today_catch_count": 1,
+//   "week_catch_count": 1
+// }

@@ -1,6 +1,6 @@
 import { pushScrappingBlogVisitorTasks } from "./actions";
 
-export const runtime = "edge"; // Edge Runtime 설정
+// export const runtime = "edge"; // Edge Runtime 설정
 
 export async function GET(_request: Request) {
   const envServiceRole = process.env.SUPABASE_SERVICE_ROLE;

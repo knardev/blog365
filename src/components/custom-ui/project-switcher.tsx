@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import type { Project } from "./app-sidebar";
 import { ChevronsUpDown, Plus, Frame } from "lucide-react";
@@ -21,13 +21,12 @@ import {
 import { Dialog, DialogTrigger } from "@/components/ui/dialog";
 import { ProjectAddDialog } from "@/features/projects/components/project-add-dialog";
 
-export function ProjectSwitcher({
-  projects,
-  profileId,
-}: {
+interface ProjectSwitcherProps {
   projects: Project[];
   profileId: string;
-}) {
+}
+
+export function ProjectSwitcher({ projects, profileId }: ProjectSwitcherProps) {
   const { isMobile } = useSidebar();
   const router = useRouter();
   const pathname = usePathname();
@@ -46,6 +45,49 @@ export function ProjectSwitcher({
     setActiveProject(project);
     router.push(project.url); // Navigate to the selected project's URL
   };
+
+  /**
+   * 1) 컴포넌트 마운트 시,
+   *    - projects 배열이 있는 경우 -> 첫 번째 프로젝트를 기본 선택
+   *    - blogs, keyword 페이지인 경우 -> 기존 activeProject 유지
+   */
+  useEffect(() => {
+    if (projects.length === 0) return;
+
+    // 현재 activeProject가 "프로젝트를 선택하세요"라면,
+    // projects[0]를 세팅 (처음 마운트 시).
+    if (activeProject.slug === "" && projects[0]) {
+      setActiveProject(projects[0]);
+    }
+  }, [projects]);
+
+  /**
+   * 2) pathname이 바뀔 때마다,
+   *    - "/blogs", "/keyword" 경로인 경우엔 기존 activeProject 유지
+   *    - "/[project_slug]/tracker"인 경우 project_slug에 맞는 프로젝트 찾기
+   */
+  useEffect(() => {
+    if (pathname.startsWith("/blogs") || pathname.startsWith("/keyword")) {
+      // blogs, keyword 경로에서는 기존 activeProject 유지
+      return;
+    }
+
+    // 예: /myProject/tracker => project_slug = "myProject"
+    // 1) URL을 슬래시로 나누기
+    const pathParts = pathname.split("/").filter(Boolean);
+
+    // 예: ["myProject", "tracker"]
+    if (pathParts.length > 0) {
+      const potentialSlug = pathParts[0];
+      // 2) projects에서 해당 slug를 찾기
+      const foundProject = projects.find((proj) => proj.slug === potentialSlug);
+
+      // 3) 찾은 경우에만 activeProject를 갱신
+      if (foundProject) {
+        setActiveProject(foundProject);
+      }
+    }
+  }, [pathname, projects]);
 
   return (
     <SidebarMenu>
@@ -80,7 +122,7 @@ export function ProjectSwitcher({
               {projects.length !== 0
                 ? projects.map((project) => (
                     <DropdownMenuItem
-                      key={project.name}
+                      key={project.slug}
                       onClick={() => handleProjectSelect(project)}
                       className="gap-2 p-2"
                     >

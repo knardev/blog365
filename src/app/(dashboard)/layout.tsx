@@ -55,16 +55,16 @@ export default async function RootLayout({
             enableSystem
             disableTransitionOnChange
           >
-            <SidebarProvider>
+            <SidebarProvider className="h-full">
               <AppSidebar />
-              <SidebarInset className="p-4">
-                <div className="flex flex-col overflow-x-auto h-full">
+              <SidebarInset className="flex flex-col bg-background">
+                <header className="sticky top-0 z-50 bg-background p-4 pb-0">
                   <NavHeaderWithTrigger />
-                  <main className="overflow-auto h-full">
-                    {children}
-                    <Toaster />
-                  </main>
-                </div>
+                </header>
+                <main className="overflow-auto flex flex-1 p-4">
+                  {children}
+                  <Toaster />
+                </main>
               </SidebarInset>
             </SidebarProvider>
           </ThemeProvider>

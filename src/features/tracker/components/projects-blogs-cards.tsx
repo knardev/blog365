@@ -4,6 +4,7 @@ import { useState, useTransition, useOptimistic } from "react";
 import { EllipsisVertical, Trash2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Popover,
   PopoverContent,
@@ -12,6 +13,7 @@ import {
 import { ProjectsBlogsWithDetail } from "@/features/tracker/queries/define-fetch-projects-blogs";
 import { deleteProjectsBlogs } from "@/features/tracker/actions/delete-projects-blogs";
 import { updateProjectsBlogs } from "@/features/tracker/actions/update-projects-blogs";
+import { updateBlog } from "@/features/blogs/actions/update-blog";
 
 export function ProjectsBlogsCards({
   blogs,
@@ -20,34 +22,94 @@ export function ProjectsBlogsCards({
   blogs: ProjectsBlogsWithDetail[];
   projectSlug: string;
 }) {
-  const [loading, setLoading] = useState<string | null>(null);
+  const [loadingIds, setLoadingIds] = useState<Set<string>>(new Set());
   const [isPending, startTransition] = useTransition();
 
-  // Optimistic state for blogs
   const [optimisticBlogs, setOptimisticBlogs] = useOptimistic(
     blogs,
-    (state, { blogId, active }) =>
-      state.map((blog) =>
-        blog.blog_id === blogId ? { ...blog, active } : blog
-      )
+    (
+      state,
+      {
+        blogId,
+        name,
+        active,
+      }: { blogId: string; name?: string; active?: boolean }
+    ) =>
+      state.map((blog) => {
+        if (blog.blog_id === blogId) {
+          if (!blog.blogs) {
+            console.warn(
+              `Blog with blog_id ${blogId} has a null 'blogs' field.`
+            );
+            return blog;
+          }
+
+          return {
+            ...blog,
+            ...(name
+              ? {
+                  blogs: {
+                    ...blog.blogs,
+                    name,
+                  },
+                }
+              : {}),
+            ...(active !== undefined ? { active } : {}),
+          };
+        }
+        return blog;
+      })
   );
 
-  const handleDelete = async (blogId: string) => {
-    setLoading(blogId);
+  const setLoading = (blogId: string, isLoading: boolean) => {
+    setLoadingIds((prev) => {
+      const newSet = new Set(prev);
+      if (isLoading) {
+        newSet.add(blogId);
+      } else {
+        newSet.delete(blogId);
+      }
+      return newSet;
+    });
+  };
 
+  const handleDelete = async (blogId: string) => {
+    setLoading(blogId, true);
     try {
       await deleteProjectsBlogs(projectSlug, blogId, `/${projectSlug}/tracker`);
     } catch (error) {
       console.error("Error deleting blog:", error);
     } finally {
-      setLoading(null);
+      setLoading(blogId, false);
     }
   };
 
-  const handleUpdate = async (blogId: string, newActive: boolean) => {
-    setLoading(blogId);
+  const handleUpdateName = async (blogId: string, newName: string) => {
+    setLoading(blogId, true);
+    startTransition(() => {
+      setOptimisticBlogs({ blogId, name: newName });
+    });
 
-    // Update optimistically
+    try {
+      await updateBlog(blogId, { name: newName }, `/${projectSlug}/tracker`);
+    } catch (error) {
+      console.error("Error updating blog name:", error);
+      startTransition(() => {
+        const originalBlog = blogs.find((b) => b.blog_id === blogId);
+        if (originalBlog) {
+          setOptimisticBlogs({
+            blogId,
+            name: originalBlog.blogs?.name ?? "N/A",
+          });
+        }
+      });
+    } finally {
+      setLoading(blogId, false);
+    }
+  };
+
+  const handleUpdateActive = async (blogId: string, newActive: boolean) => {
+    setLoading(blogId, true);
     startTransition(() => {
       setOptimisticBlogs({ blogId, active: newActive });
     });
@@ -61,12 +123,11 @@ export function ProjectsBlogsCards({
       );
     } catch (error) {
       console.error("Error updating blog active status:", error);
-      // Revert state if the update fails
       startTransition(() => {
         setOptimisticBlogs({ blogId, active: !newActive });
       });
     } finally {
-      setLoading(null);
+      setLoading(blogId, false);
     }
   };
 
@@ -77,17 +138,19 @@ export function ProjectsBlogsCards({
           key={blog.id}
           className="flex justify-between items-center border-b last:border-b-0 py-2"
         >
-          {/* Blog Info */}
-          <div className="flex flex-col">
-            <p className="text-sm font-medium text-gray-800">
-              {blog?.blogs?.name ?? "N/A"}
-            </p>
-            <p className="text-xs text-gray-500">
+          <div className="flex flex-col gap-1">
+            <Input
+              type="text"
+              variant="underline"
+              defaultValue={blog?.blogs?.name ?? "N/A"}
+              placeholder="블로그 별칭"
+              onBlur={(e) => handleUpdateName(blog.blog_id, e.target.value)}
+            />
+            <p className="text-xs text-gray-500 px-1">
               {blog?.blogs?.blog_slug ?? "N/A"}
             </p>
           </div>
 
-          {/* Action Buttons */}
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="ghost" size="icon">
@@ -99,10 +162,10 @@ export function ProjectsBlogsCards({
                 <div className="flex items-center gap-2">
                   <Switch
                     checked={blog.active}
+                    disabled={loadingIds.has(blog.blog_id)}
                     onCheckedChange={(checked) =>
-                      handleUpdate(blog.blog_id!, checked)
+                      handleUpdateActive(blog.blog_id, checked)
                     }
-                    disabled={loading === blog.blog_id || isPending}
                   />
                   <span className="text-sm">
                     추적 {blog.active ? "활성화" : "비활성화"}
@@ -113,10 +176,10 @@ export function ProjectsBlogsCards({
                   variant="destructive"
                   size="sm"
                   className="w-full justify-start"
-                  onClick={() => handleDelete(blog.blog_id!)}
-                  disabled={loading === blog.blog_id}
+                  onClick={() => handleDelete(blog.blog_id)}
+                  disabled={loadingIds.has(blog.blog_id)}
                 >
-                  {loading === blog.blog_id ? (
+                  {loadingIds.has(blog.blog_id) ? (
                     <span className="animate-spin w-4 h-4 mr-2">⏳</span>
                   ) : (
                     <Trash2 className="w-4 h-4 mr-2" />

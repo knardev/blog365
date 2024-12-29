@@ -13,6 +13,7 @@ import {
   Send,
   ScanSearch,
   ChartBarDecreasing,
+  Settings,
 } from "lucide-react";
 import { NavUser } from "./nav-user";
 import { ProjectSwitcher } from "./project-switcher";
@@ -41,20 +42,20 @@ const data = {
       icon: ChartBarDecreasing,
     },
     {
-      title: "키워드 관리",
-      url: "/keyword",
-      icon: ScanSearch,
+      title: "설정",
+      url: "/setting",
+      icon: Settings,
     },
-    {
-      title: "카카오 알림",
-      url: "/kakao",
-      icon: Send,
-    },
-    {
-      title: "멤버 관리",
-      url: "/member",
-      icon: Users,
-    },
+    // {
+    //   title: "카카오 알림",
+    //   url: "/kakao",
+    //   icon: Send,
+    // },
+    // {
+    //   title: "멤버 관리",
+    //   url: "/member",
+    //   icon: Users,
+    // },
   ],
   navSecondary: [
     {
@@ -109,7 +110,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           const basePath = pathname.split("/").slice(1).join("/");
 
           const newPath =
-            basePath === "blogs"
+            basePath === "blogs" || basePath === "keyword"
               ? `/${project.slug}/tracker`
               : `/${project.slug}/${basePath.split("/").slice(1).join("/")}`;
 
@@ -128,7 +129,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   // Determine the current project
   const currentProject =
-    pathname === "/blogs"
+    pathname === "/blogs" || pathname === "/keyword"
       ? projects[0]
       : projects.find((project) => pathname.includes(`/${project.slug}`)) ||
         projects[0];
@@ -167,6 +168,25 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+        <SidebarGroup>
+          <SidebarGroupLabel>키워드 관리</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  tooltip="키워드 조회"
+                  isActive={pathname === "/keyword"}
+                >
+                  <button onClick={() => router.push("/keyword")}>
+                    <ScanSearch />
+                    키워드 조회
+                  </button>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

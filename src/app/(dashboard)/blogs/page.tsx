@@ -5,6 +5,7 @@ import { getProfileData } from "@/features/common/actions/get-profile";
 import { generateMockData } from "@/features/blogs/actions/mock-data";
 import { LoggedInUser } from "@/features/common/types/types";
 import { format } from "date-fns";
+import { BlogTableHeader } from "@/features/blogs/components/blog-header";
 
 export default async function Page() {
   const loggedInUser: LoggedInUser | null = await getProfileData();
@@ -25,11 +26,14 @@ export default async function Page() {
 
   // Pass raw data and allDates to the client component
   return (
-    <BlogsDataTable
-      data={fetchedData}
-      allDates={allDates}
-      profileId={loggedInUser?.profile.id}
-    />
+    <div className="overflow-auto flex flex-1 flex-col">
+      <BlogTableHeader profileId={loggedInUser?.profile.id} />
+      <BlogsDataTable
+        data={fetchedData}
+        allDates={allDates}
+        profileId={loggedInUser?.profile.id}
+      />
+    </div>
   );
 
   // const data = generateMockData();

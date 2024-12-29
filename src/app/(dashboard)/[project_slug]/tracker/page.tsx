@@ -1,18 +1,10 @@
 import { redirect } from "next/navigation";
 import { fetchKeywordTrackerWithResults } from "@/features/tracker/actions/fetch-keyword-tracker-with-results";
-import { fetchProjectsBlogs } from "@/features/tracker/actions/fetch-projects-blogs";
 import { KeywordTrackerDataTable } from "@/features/tracker/components/keyword-tracker-data-table";
-import { ProjectsBlogsPanel } from "@/features/tracker/components/projects-blogs-panel";
-import { fetchBlog } from "@/features/blogs/actions/fetch-blogs";
-import { fetchKeywordCategories } from "@/features/keyword/actions/fetch-keyword-categories";
 import { getProfileData } from "@/features/common/actions/get-profile";
 import { LoggedInUser } from "@/features/common/types/types";
-import { format } from "date-fns";
-import {
-  ResizableHandle,
-  ResizablePanel,
-  ResizablePanelGroup,
-} from "@/components/ui/resizable";
+import { KeywordTrackerHeader } from "@/features/tracker/components/keyword-tracker-header";
+import { format, subDays } from "date-fns";
 
 export default async function Page({
   params,
@@ -28,43 +20,32 @@ export default async function Page({
   }
 
   // Fetch data
-  const [fetchedData, projectBlogs, availableBlogs, keywordCategories] =
-    await Promise.all([
-      fetchKeywordTrackerWithResults(params.project_slug),
-      fetchProjectsBlogs(params.project_slug),
-      fetchBlog(loggedInUser.profile.id),
-      fetchKeywordCategories(params.project_slug),
-    ]);
+  const [fetchedData] = await Promise.all([
+    fetchKeywordTrackerWithResults(params.project_slug),
+  ]);
 
   // Generate allDates for the past 30 days
-  const today = new Date();
+  const yesterday = subDays(new Date(), 1);
   const allDates: string[] = Array.from({ length: 30 }, (_, index) => {
-    const date = new Date(today);
-    date.setDate(today.getDate() - index);
+    const date = new Date(yesterday);
+    date.setDate(yesterday.getDate() - index);
     return format(date, "yyyy-MM-dd");
   });
 
-  if (!fetchedData || !projectBlogs) {
+  if (!fetchedData) {
     return null;
   }
 
   return (
-    <ResizablePanelGroup direction="horizontal">
-      <ResizablePanel defaultSize={20} className="p-2">
-        <ProjectsBlogsPanel
-          blogs={projectBlogs}
-          availableBlogs={availableBlogs}
+    <div className="overflow-auto flex flex-1 flex-col">
+      <div className="flex flex-col space-y-4">
+        <KeywordTrackerHeader
+          fetchedData={fetchedData}
+          profileId={loggedInUser.profile.id}
           projectSlug={params.project_slug}
         />
-      </ResizablePanel>
-      <ResizablePanel defaultSize={80} className="p-2">
-        <KeywordTrackerDataTable
-          data={fetchedData}
-          allDates={allDates}
-          projectSlug={params.project_slug}
-          keywordCategories={keywordCategories ?? []}
-        />
-      </ResizablePanel>
-    </ResizablePanelGroup>
+        <KeywordTrackerDataTable data={fetchedData} allDates={allDates} />
+      </div>
+    </div>
   );
 }

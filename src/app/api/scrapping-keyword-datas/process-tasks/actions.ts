@@ -44,6 +44,24 @@ async function generateHmacSignature(
   return hmac;
 }
 
+function parseSearchVolume(value: string | number): number {
+  if (typeof value === "string") {
+    // "< 10" 등의 문자열이 있으면
+    if (value.includes("<")) {
+      // 예: "< 10" → 9 (혹은 0 등 원하는 값)
+      return 9;
+    }
+    const parsed = parseInt(value, 10);
+    return Number.isNaN(parsed) ? 0 : parsed;
+  }
+  // value가 숫자 타입이면 그대로
+  if (typeof value === "number") {
+    return value;
+  }
+  // 그 외는 0 처리
+  return 0;
+}
+
 // Define types
 type NaverKeywordResult = {
   relKeyword: string;
@@ -219,8 +237,10 @@ export async function processKeywordData(
 
   const result: NaverKeywordResult = data.keywordList[0];
 
-  const monthlyPcSearchVolume = result.monthlyPcQcCnt || 0;
-  const monthlyMobileSearchVolume = result.monthlyMobileQcCnt || 0;
+  const monthlyPcSearchVolume = parseSearchVolume(result.monthlyPcQcCnt);
+  const monthlyMobileSearchVolume = parseSearchVolume(
+    result.monthlyMobileQcCnt,
+  );
   const monthlySearchVolume = monthlyPcSearchVolume + monthlyMobileSearchVolume;
 
   const dailyPcSearchVolume = Math.floor(monthlyPcSearchVolume / 30);

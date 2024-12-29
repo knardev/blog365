@@ -12,7 +12,6 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -22,24 +21,22 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { KeywordTrackerWithResults } from "@/features/tracker/types/types";
+import {
+  KeywordTrackerTransformed,
+  KeywordTrackerWithResultsResponse,
+} from "@/features/tracker/types/types";
 import { generateColumns } from "@/features/tracker/components/columns";
-import { KeywordTrackerAddDialog } from "@/features/keyword/components/keyword-tracker-add-dialog";
-import { KeywordCategories } from "@/features/keyword/queries/define-fetch-keyword-categories";
 
 interface KeywordTrackerDataTableProps {
-  data: KeywordTrackerWithResults[];
+  data: KeywordTrackerWithResultsResponse;
   allDates: string[];
-  projectSlug: string;
-  keywordCategories: KeywordCategories[];
 }
 
 export function KeywordTrackerDataTable({
   data,
   allDates,
-  projectSlug,
-  keywordCategories,
 }: KeywordTrackerDataTableProps) {
+  const keywordTrakers: KeywordTrackerTransformed[] = data.keyword_trackers;
   const columns = React.useMemo(() => generateColumns(allDates), [allDates]);
 
   // Table states
@@ -49,7 +46,7 @@ export function KeywordTrackerDataTable({
 
   // Initialize the table
   const table = useReactTable({
-    data,
+    data: keywordTrakers,
     columns,
     defaultColumn: {
       size: 100,
@@ -57,7 +54,7 @@ export function KeywordTrackerDataTable({
       maxSize: 500,
     },
     getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
+    // getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     onSortingChange: setSorting,
@@ -71,10 +68,10 @@ export function KeywordTrackerDataTable({
   });
 
   return (
-    <div className="w-full h-full space-y-4 flex flex-col">
+    <div className="w-full flex flex-col space-y-2 flex-1">
       {/* Filter by Keyword */}
       <div className="flex items-center justify-between w-full gap-2">
-        <Input
+        {/* <Input
           placeholder="키워드로 검색"
           value={
             (table.getColumn("keywords.name")?.getFilterValue() as string) ?? ""
@@ -83,92 +80,129 @@ export function KeywordTrackerDataTable({
             table.getColumn("keywords.name")?.setFilterValue(event.target.value)
           }
           className="max-w-sm"
-        />
-        <KeywordTrackerAddDialog
-          projectSlug={projectSlug}
-          revalidateTargetPath={`/${projectSlug}/tracker`}
-          keywordCategories={keywordCategories}
-        />
+        /> */}
       </div>
 
-      {/* Main Content: Table and Pagination */}
-      <div className="flex flex-col justify-between h-full flex-1">
-        {/* Table Container with Horizontal Scroll */}
-        <div className="relative rounded-md border max-w-full overflow-x-scroll mb-4">
-          <Table className="h-full">
-            <TableHeader>
-              {table.getHeaderGroups().map((headerGroup) => (
-                <TableRow key={headerGroup.id}>
-                  {headerGroup.headers.map((header, index) => {
-                    const isSticky = header.column.columnDef.meta?.sticky;
-                    const left = header.column.columnDef.meta?.left ?? 0;
+      {/* Table Container with Horizontal Scroll */}
+      <div className="relative rounded-md border max-w-full overflow-x-auto overflow-y-auto flex flex-col min-h-0 h-[600px]">
+        <Table>
+          <TableHeader>
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id}>
+                {headerGroup.headers.map((header, index) => {
+                  const isStickyColumn =
+                    header.column.columnDef.meta?.isStickyColumn;
+                  const stickyColumnLeft =
+                    header.column.columnDef.meta?.stickyColumnLeft ?? 0;
+                  const isStickyRow = header.column.columnDef.meta?.isStickyRow;
+                  const isLastSticky =
+                    header.column.columnDef.meta?.isLastSticky;
+                  const isStickyMobileColumn =
+                    header.column.columnDef.meta?.isStickyMobileColumn;
+                  return (
+                    <TableHead
+                      key={header.id}
+                      width={`${header.getSize()}px`}
+                      isStickyColumn={isStickyColumn}
+                      stickyColumnLeft={stickyColumnLeft}
+                      isStickyRow={isStickyRow}
+                      isStickyMobileColumn={isStickyMobileColumn}
+                      isLastSticky={isLastSticky}
+                    >
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(
+                            header.column.columnDef.header,
+                            header.getContext()
+                          )}
+                    </TableHead>
+                  );
+                })}
+              </TableRow>
+            ))}
+          </TableHeader>
+          <TableBody>
+            {keywordTrakers.length && table.getRowModel().rows?.length ? (
+              table.getRowModel().rows.map((row) => (
+                <TableRow
+                  key={row.id}
+                  data-state={row.getIsSelected() && "selected"}
+                >
+                  {row.getVisibleCells().map((cell, index) => {
+                    const isStickyColumn =
+                      cell.column.columnDef.meta?.isStickyColumn;
+                    const stickyColumnLeft =
+                      cell.column.columnDef.meta?.stickyColumnLeft ?? 0;
+                    const isStickyRow = cell.column.columnDef.meta?.isStickyRow;
                     const isLastSticky =
-                      header.column.columnDef.meta?.isLastSticky;
+                      cell.column.columnDef.meta?.isLastSticky;
+                    const isStickyMobileColumn =
+                      cell.column.columnDef.meta?.isStickyMobileColumn;
+
+                    const cellValue = Number(cell.getValue()) || 0;
+
+                    // Determine background color based on the value
+                    const getBackgroundColor = (value: number) => {
+                      if (value >= 3) return "#15803d";
+                      if (value >= 2) return "#22c55e";
+                      if (value >= 1) return "#86efac";
+                      if (value > 0) return "#dcfce7";
+                      return undefined;
+                    };
+
+                    // 텍스트 색상 반환
+                    const getTextClass = (value: number) => {
+                      if (value >= 3) return "text-white";
+                      if (value >= 2) return "text-slate-800";
+                      if (value >= 1) return "text-slate-800";
+                      if (value > 0) return "text-slate-800";
+                      return "text-muted-foreground";
+                    };
+
+                    const backgroundColor = isStickyColumn
+                      ? undefined
+                      : getBackgroundColor(cellValue);
+
+                    const textClass = isStickyColumn
+                      ? ""
+                      : getTextClass(cellValue);
+
                     return (
-                      <TableHead
-                        key={header.id}
-                        width={`${header.getSize()}px`}
-                        isSticky={isSticky}
+                      <TableCell
+                        key={cell.id}
+                        width={`${cell.column.getSize()}px`}
+                        isStickyColumn={isStickyColumn}
+                        stickyColumnLeft={stickyColumnLeft}
+                        isStickyRow={isStickyRow}
+                        isStickyMobileColumn={isStickyMobileColumn}
                         isLastSticky={isLastSticky}
-                        left={isSticky ? `${left}px` : undefined}
+                        backgroundColor={backgroundColor}
+                        className={textClass}
                       >
-                        {header.isPlaceholder
-                          ? null
-                          : flexRender(
-                              header.column.columnDef.header,
-                              header.getContext()
-                            )}
-                      </TableHead>
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext()
+                        )}
+                      </TableCell>
                     );
                   })}
                 </TableRow>
-              ))}
-            </TableHeader>
-            <TableBody>
-              {data.length && table.getRowModel().rows?.length ? (
-                table.getRowModel().rows.map((row) => (
-                  <TableRow
-                    key={row.id}
-                    data-state={row.getIsSelected() && "selected"}
-                  >
-                    {row.getVisibleCells().map((cell, index) => {
-                      const isSticky = cell.column.columnDef.meta?.sticky;
-                      const left = cell.column.columnDef.meta?.left ?? 0;
-                      const isLastSticky =
-                        cell.column.columnDef.meta?.isLastSticky;
-                      return (
-                        <TableCell
-                          key={cell.id}
-                          width={`${cell.column.getSize()}px`}
-                          isSticky={isSticky}
-                          isLastSticky={isLastSticky}
-                          left={isSticky ? `${left}px` : undefined}
-                        >
-                          {flexRender(
-                            cell.column.columnDef.cell,
-                            cell.getContext()
-                          )}
-                        </TableCell>
-                      );
-                    })}
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell
-                    colSpan={columns.length}
-                    className="h-24 text-center"
-                  >
-                    키워드 트래커가 없습니다. 추가해주세요.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell
+                  colSpan={columns.length}
+                  className="h-24 text-center"
+                >
+                  키워드 트래커가 없습니다. 추가해주세요.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
 
         {/* Pagination Controls */}
-        <div className="flex items-center">
+        {/* <div className="flex items-center">
           <Button
             variant="outline"
             size="sm"
@@ -185,7 +219,7 @@ export function KeywordTrackerDataTable({
           >
             다음
           </Button>
-        </div>
+        </div> */}
       </div>
     </div>
   );

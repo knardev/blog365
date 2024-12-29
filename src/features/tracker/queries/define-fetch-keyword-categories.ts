@@ -6,7 +6,7 @@ import { createClient } from "@/utils/supabase/server";
  * @param projectId - The ID of the project to fetch keywords for
  * @returns Supabase query to fetch keywords
  */
-export const defineFetchKeywordCategories = async (projectId: string) => {
+export const defineFetchKeywordCategoriesQuery = async (projectId: string) => {
   // Fetch keywords
   const query = createClient()
     .from("keyword_categories")
@@ -20,4 +20,6 @@ export const defineFetchKeywordCategories = async (projectId: string) => {
 };
 
 // Type for the query result
-export type KeywordCategories = QueryData<ReturnType<typeof defineFetchKeywordCategories>>[number];
+export type KeywordCategories = QueryData<
+  ReturnType<typeof defineFetchKeywordCategoriesQuery>
+>[number];
