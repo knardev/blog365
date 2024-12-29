@@ -1,8 +1,8 @@
 "use server";
 
 import { createClient } from "@/utils/supabase/server";
-import { defineFetchKeywordCategoriesQuery } from "@/features/tracker/queries/define-fetch-keyword-categories";
-import { KeywordCategories } from "@/features/tracker/queries/define-fetch-keyword-categories";
+import { defineFetchKeywordCategoriesQuery } from "@/features/setting/queries/define-fetch-keyword-categories";
+import { KeywordCategories } from "@/features/setting/queries/define-fetch-keyword-categories";
 /**
  * Action to fetch all keywords
  * @param projectSlug - The slug of the project to fetch keywords for

@@ -142,7 +142,7 @@ export function BlogsDataTable({ data, allDates }: BlogsDataTableProps) {
                       if (value >= 500) return "#22c55e";
                       if (value >= 100) return "#86efac";
                       if (value > 0) return "#dcfce7";
-                      return "#fff";
+                      return undefined;
                     };
 
                     const getTextClass = (value: number) => {

@@ -4,7 +4,7 @@ import { createClient } from "@/utils/supabase/server";
 import {
     defineDeleteMessageTargetQuery,
     DeleteMessageTarget,
-} from "@/features/kakao/queries/define-delete-message-target";
+} from "@/features/setting/queries/define-delete-message-target";
 import { revalidatePath } from "next/cache";
 
 /**

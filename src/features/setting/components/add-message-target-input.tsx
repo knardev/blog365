@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { addMessageTarget } from "@/features/kakao/actions/add-message-targets";
+import { addMessageTarget } from "@/features/setting/actions/add-message-targets";
 import { revalidatePath } from "next/cache";
 
 export function AddMessageTargetInput({

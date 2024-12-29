@@ -4,7 +4,7 @@ import { createClient } from "@/utils/supabase/server";
 import {
   defineFetchMessageTargetsQuery,
   FetchMessageTarget,
-} from "@/features/kakao/queries/define-fetch-message-target";
+} from "@/features/setting/queries/define-fetch-message-target";
 
 /**
  * Action to fetch message targets for a project

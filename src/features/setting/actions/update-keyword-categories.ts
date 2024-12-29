@@ -2,26 +2,25 @@
 
 import { createClient } from "@/utils/supabase/server";
 import {
-  defineUpdateMessageTargetQuery,
-  UpdateMessageTarget,
-} from "@/features/kakao/queries/define-update-message-target";
+  defineUpdateKeywordCategoryQuery,
+  UpdateKeywordCategory,
+} from "@/features/setting/queries/define-update-keyword-categories";
 import { revalidatePath } from "next/cache";
-import { TablesUpdate } from "@/types/database.types";
 
 /**
- * Action to update a message target
+ * Action to update a keyword category
  * @param projectSlug - The slug of the project
- * @param phoneNumber - The phone number of the target to update
- * @param updates - The fields to update
+ * @param categoryId - The ID of the category to update
+ * @param updates - Fields to update (e.g., name)
  * @param revalidateTargetPath - (Optional) The path to revalidate
  * @returns The result of the update or an error if it occurs
  */
-export async function updateMessageTarget(
+export async function updateKeywordCategory(
   projectSlug: string,
-  phoneNumber: string,
-  updates: TablesUpdate<"message_targets">,
+  categoryId: string,
+  updates: Partial<{ name: string }>,
   revalidateTargetPath?: string,
-): Promise<UpdateMessageTarget | null> {
+): Promise<UpdateKeywordCategory | null> {
   try {
     // Fetch the project ID using the provided slug
     const { data: projectData, error: projectError } = await createClient()
@@ -41,22 +40,16 @@ export async function updateMessageTarget(
       throw new Error("Project not found");
     }
 
-    console.log("Updating message target:", {
-      projectSlug,
-      phoneNumber,
-      updates,
-    });
-
-    // Execute the query to update a message target
-    const { data, error } = await defineUpdateMessageTargetQuery(
+    // Execute the query to update a keyword category
+    const { data, error } = await defineUpdateKeywordCategoryQuery(
       projectId,
-      phoneNumber,
+      categoryId,
       updates,
     );
 
     if (error) {
-      console.error("Error updating message target:", error);
-      throw new Error("Failed to update message target");
+      console.error("Error updating keyword category:", error);
+      throw new Error("Failed to update keyword category");
     }
 
     // Revalidate the path if specified
@@ -66,9 +59,9 @@ export async function updateMessageTarget(
 
     return data;
   } catch (err) {
-    console.error("Unexpected error in updateMessageTarget:", err);
+    console.error("Unexpected error in updateKeywordCategory:", err);
     throw new Error(
-      "Unexpected error occurred while updating message target",
+      "Unexpected error occurred while updating keyword category",
     );
   }
 }

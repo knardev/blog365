@@ -2,23 +2,23 @@
 
 import { createClient } from "@/utils/supabase/server";
 import {
-  AddMessageTarget,
-  defineAddMessageTargetQuery,
-} from "@/features/kakao/queries/define-add-message-target";
+  defineDeleteKeywordCategoryQuery,
+  DeleteKeywordCategory,
+} from "@/features/setting/queries/define-delete-keyword-categories";
 import { revalidatePath } from "next/cache";
 
 /**
- * Action to add a new message target
+ * Action to delete a keyword category
  * @param projectSlug - The slug of the project
- * @param phoneNumber - The phone number of the target
+ * @param categoryId - The ID of the category to delete
  * @param revalidateTargetPath - (Optional) The path to revalidate
- * @returns The result of the insertion or an error if it occurs
+ * @returns The result of the deletion or an error if it occurs
  */
-export async function addMessageTarget(
+export async function deleteKeywordCategory(
   projectSlug: string,
-  phoneNumber: string,
+  categoryId: string,
   revalidateTargetPath?: string,
-): Promise<AddMessageTarget | null> {
+): Promise<DeleteKeywordCategory | null> {
   try {
     // Fetch the project ID using the provided slug
     const { data: projectData, error: projectError } = await createClient()
@@ -38,15 +38,15 @@ export async function addMessageTarget(
       throw new Error("Project not found");
     }
 
-    // Execute the query to add a message target
-    const { data, error } = await defineAddMessageTargetQuery(
+    // Execute the query to delete a keyword category
+    const { data, error } = await defineDeleteKeywordCategoryQuery(
       projectId,
-      phoneNumber,
+      categoryId,
     );
 
     if (error) {
-      console.error("Error adding message target:", error);
-      throw new Error("Failed to add message target");
+      console.error("Error deleting keyword category:", error);
+      throw new Error("Failed to delete keyword category");
     }
 
     // Revalidate the path if specified
@@ -56,9 +56,9 @@ export async function addMessageTarget(
 
     return data;
   } catch (err) {
-    console.error("Unexpected error in addMessageTarget:", err);
+    console.error("Unexpected error in deleteKeywordCategory:", err);
     throw new Error(
-      "Unexpected error occurred while adding message target",
+      "Unexpected error occurred while deleting keyword category",
     );
   }
 }

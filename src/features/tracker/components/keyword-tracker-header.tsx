@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { fetchBlog } from "@/features/blogs/actions/fetch-blogs";
 import { fetchProjectsBlogs } from "@/features/tracker/actions/fetch-projects-blogs";
-import { fetchKeywordCategories } from "@/features/tracker/actions/fetch-keyword-categories";
+import { fetchKeywordCategories } from "@/features/setting/actions/fetch-keyword-categories";
 import { ProjectsBlogsSheet } from "@/features/tracker/components/projects-blogs-sheet";
 import { KeywordTrackerAddSheet } from "@/features/tracker/components/keyword-tracker-add-sheet";
 import { KeywordTrackerWithResultsResponse } from "@/features/tracker/types/types";

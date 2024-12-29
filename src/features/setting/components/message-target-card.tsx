@@ -10,8 +10,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { deleteMessageTarget } from "@/features/kakao/actions/delete-message-target";
-import { updateMessageTarget } from "@/features/kakao/actions/update-message-target";
+import { deleteMessageTarget } from "@/features/setting/actions/delete-message-target";
+import { updateMessageTarget } from "@/features/setting/actions/update-message-target";
 
 export function MessageTargetsCards({
   messageTargets,

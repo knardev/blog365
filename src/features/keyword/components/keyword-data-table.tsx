@@ -25,7 +25,7 @@ import { Input } from "@/components/ui/input";
 import { generateColumns } from "@/features/keyword/components/columns";
 import { KeywordTrackerWithAnalytics } from "@/features/keyword/types/types";
 import { updateKeywordTracker } from "@/features/keyword/actions/update-keyword-tracker";
-import { KeywordCategories } from "@/features/tracker/queries/define-fetch-keyword-categories";
+import { KeywordCategories } from "@/features/setting/queries/define-fetch-keyword-categories";
 import { KeywordTrackerAddSheet } from "@/features/tracker/components/keyword-tracker-add-sheet";
 
 interface KeywordDataTableProps {

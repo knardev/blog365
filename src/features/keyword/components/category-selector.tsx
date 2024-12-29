@@ -18,7 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/utils/shadcn/utils";
 import { updateKeywordTracker } from "@/features/keyword/actions/update-keyword-tracker";
-import { KeywordCategories } from "@/features/tracker/queries/define-fetch-keyword-categories";
+import { KeywordCategories } from "@/features/setting/queries/define-fetch-keyword-categories";
 
 interface CategorySelectorProps {
   trackerId: string;

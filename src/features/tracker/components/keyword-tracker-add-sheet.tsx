@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/command";
 import { cn } from "@/utils/shadcn/utils";
 import { addKeywordTracker } from "@/features/tracker/actions/add-keyword-tracker";
-import { KeywordCategories } from "@/features/tracker/queries/define-fetch-keyword-categories";
+import { KeywordCategories } from "@/features/setting/queries/define-fetch-keyword-categories";
 
 export function KeywordTrackerAddSheet({
   projectSlug,

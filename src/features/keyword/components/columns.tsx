@@ -1,6 +1,6 @@
 import { ColumnDef } from "@tanstack/react-table";
 import { KeywordTrackerWithAnalytics } from "@/features/keyword/types/types";
-import { KeywordCategories } from "@/features/tracker/queries/define-fetch-keyword-categories";
+import { KeywordCategories } from "@/features/setting/queries/define-fetch-keyword-categories";
 
 import { Check, ChevronsUpDown, ArrowDown, ArrowUp } from "lucide-react";
 import { CategorySelector } from "@/features/keyword/components/category-selector";
