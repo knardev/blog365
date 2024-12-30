@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { SolapiMessageService } from "solapi";
 import { format, subDays } from "date-fns";
 import { ko } from "date-fns/locale";
+import { formatInTimeZone, toZonedTime } from "date-fns-tz";
 
 // Supabase 설정
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
@@ -75,10 +76,22 @@ export async function sendKakaoMessageAction(
       return { success: false, error: "No active keyword_trackers found." };
     }
 
-    // 어제 날짜 포맷: MM/dd (요일) (예: 04/26 (금))
-    const yesterday = subDays(new Date(), 1);
-    const dateString = format(yesterday, "yyyy-MM-dd"); // Supabase 쿼리용
-    const yesterdayStr = format(yesterday, "MM/dd (EEE)", { locale: ko });
+    // 한국 시간대 설정
+    const KST = "Asia/Seoul";
+
+    // 현재 UTC 기준 시간을 한국시간으로 변환
+    const nowInKST = toZonedTime(new Date(), KST);
+
+    // 어제 날짜를 한국시간 기준으로 계산
+    const yesterdayInKST = subDays(nowInKST, 1);
+
+    // Supabase 쿼리용: yyyy-MM-dd 형식
+    const dateString = formatInTimeZone(yesterdayInKST, KST, "yyyy-MM-dd");
+
+    // 한국시간 기준 어제 날짜 포맷: MM/dd (요일)
+    const yesterdayStr = formatInTimeZone(yesterdayInKST, KST, "MM/dd (EEE)", {
+      locale: ko,
+    });
 
     // =============== (3) 모든 tracker의 결과를 한 번의 쿼리로 가져오기 ===============
     const trackerIds = trackers.map((tracker) => tracker.id);

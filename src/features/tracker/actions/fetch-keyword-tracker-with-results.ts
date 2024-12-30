@@ -1,4 +1,4 @@
-"use server";
+// "use server";
 
 import {
   DailyResult,
@@ -17,6 +17,8 @@ import {
 import {
   defineFetchKeywordTrackerWithCategoriesQuery,
 } from "@/features/tracker/queries/define-fetch-keyword-tracker-with-catgory";
+import { subDays } from "date-fns";
+import { formatInTimeZone, toZonedTime } from "date-fns-tz";
 
 export async function fetchKeywordTrackerWithResults(
   projectSlug: string,
@@ -104,10 +106,20 @@ export async function fetchKeywordTrackerWithResults(
   }
 
   // 2) transformedData 생성
-  const today = new Date().toISOString().slice(0, 10);
-  const weekAgo = new Date();
-  weekAgo.setDate(weekAgo.getDate() - 7);
-  const weekAgoDate = weekAgo.toISOString().slice(0, 10);
+  const KST = "Asia/Seoul";
+  // 현재 UTC 기준 시간을 한국시간으로 변환
+  const nowInKST = toZonedTime(new Date(), KST);
+
+  // 한국시간 기준 오늘 날짜
+  const today = formatInTimeZone(nowInKST, KST, "yyyy-MM-dd");
+
+  // 한국시간 기준 어제 날짜
+  const yesterdayDateInKST = subDays(nowInKST, 1);
+  const yesterday = formatInTimeZone(yesterdayDateInKST, KST, "yyyy-MM-dd");
+
+  // 어제 기준 7일 전 날짜
+  const weekAgoDateInKST = subDays(yesterdayDateInKST, 7);
+  const weekAgo = formatInTimeZone(weekAgoDateInKST, KST, "yyyy-MM-dd");
 
   const transformedData: KeywordTrackerTransformed[] = mergedData.map(
     (tracker) => {
@@ -147,7 +159,7 @@ export async function fetchKeywordTrackerWithResults(
       });
 
       // 오늘 날짜의 일간 첫페이지 노출량 계산
-      const todayResult = resultsMap[today];
+      const todayResult = resultsMap[yesterday];
       const dailyFirstPageExposure = (todayResult?.catch_success ?? 0) *
         (tracker.keyword_analytics.daily_search_volume ?? 0);
 
@@ -170,12 +182,12 @@ export async function fetchKeywordTrackerWithResults(
   }, 0) * 0.2;
 
   const todayCatchCount = transformedData.filter((tracker) => {
-    const todayResult = tracker.keyword_tracker_results[today];
+    const todayResult = tracker.keyword_tracker_results[yesterday];
     return todayResult?.catch_success ?? 0 > 0;
   }).length;
 
   const weekCatchCount = transformedData.filter((tracker) => {
-    const weekAgoResult = tracker.keyword_tracker_results[weekAgoDate];
+    const weekAgoResult = tracker.keyword_tracker_results[weekAgo];
     return weekAgoResult?.catch_success ?? 0 > 0;
   }).length;
 
