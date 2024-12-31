@@ -125,17 +125,23 @@ export async function GET(request: Request) {
     // X-Secret-Key 인증 헤더 포함
     // (주의: 여기서 await로 대기하면 현재 함수가 끝나기 전에 응답 시간이 길어질 수 있으므로,
     //  필요에 따라 await를 붙이지 않고 백그라운드로 날릴 수도 있습니다.)
-    await fetch(request.url, {
-      method: "GET",
+    // 공통 웹훅 엔드포인트 호출 (비동기)
+    fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/process-webhook`, {
+      method: "POST",
       headers: {
-        "X-Secret-Key": incomingKey ?? "",
+        "X-Secret-Key": incomingKey || "",
+        "Content-Type": "application/json",
       },
+      body: JSON.stringify({
+        action: "scrapping-serp-results",
+        payload: {}, // 필요 시 추가 데이터 포함
+      }),
     })
       .then(() => {
-        console.log("[INFO] Self invocation triggered successfully.");
+        console.log("[INFO] Webhook invocation triggered successfully.");
       })
       .catch((err) => {
-        console.error("[ERROR] Failed to self-invoke:", err);
+        console.error("[ERROR] Failed to invoke webhook:", err);
       });
   } else {
     console.log("[INFO] No more messages left in the queue.");
