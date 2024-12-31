@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { processBlogVisitorData } from "./actions";
 
 // export const runtime = "edge"; // Next.js Edge Runtime
+export const maxDuration = 3;
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE ?? "";
@@ -29,7 +30,7 @@ const queues = createClient(supabaseUrl, supabaseKey, {
   },
 });
 
-const MESSAGE_LIMIT = 50;
+const MESSAGE_LIMIT = 1;
 
 export async function GET(request: Request) {
   // 간단한 인증 로직 (원한다면): 헤더 검사
@@ -144,7 +145,7 @@ export async function GET(request: Request) {
 
       // 새 요청을 GET으로 호출(현재 route URL)
       // X-Secret-Key 헤더를 다시 전달
-      fetch(request.url, {
+      await fetch(request.url, {
         method: "GET",
         headers: {
           "X-Secret-Key": incomingKey ?? "",

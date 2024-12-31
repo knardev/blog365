@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { fetchSerpResults, saveSerpResults } from "./actions";
 
 // export const runtime = "edge";
+export const maxDuration = 3;
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE ?? "";
@@ -124,7 +125,7 @@ export async function GET(request: Request) {
     // X-Secret-Key 인증 헤더 포함
     // (주의: 여기서 await로 대기하면 현재 함수가 끝나기 전에 응답 시간이 길어질 수 있으므로,
     //  필요에 따라 await를 붙이지 않고 백그라운드로 날릴 수도 있습니다.)
-    fetch(request.url, {
+    await fetch(request.url, {
       method: "GET",
       headers: {
         "X-Secret-Key": incomingKey ?? "",

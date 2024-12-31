@@ -4,6 +4,7 @@ import { processKeywordData, saveKeywordAnalytics } from "./actions";
 // export const runtime = "edge";
 // (Edge Runtime 사용 시 일부 Node.js API(fetch, Buffer 등) 제약이 있음.
 //  self-invoke를 위해 fetch를 사용하므로 문제 없으면 주석 해제 고려)
+export const maxDuration = 3;
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE ?? "";
@@ -21,7 +22,7 @@ const queues = createClient(supabaseUrl, supabaseKey, {
   },
 });
 
-const MESSAGE_LIMIT = 3;
+const MESSAGE_LIMIT = 1;
 
 function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -125,7 +126,7 @@ export async function GET(request: Request) {
     console.log("[INFO] More messages remain. Invoking self again...");
 
     // self-invocation
-    fetch(request.url, {
+    await fetch(request.url, {
       method: "GET",
       headers: {
         "X-Secret-Key": incomingKey ?? "",

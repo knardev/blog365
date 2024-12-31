@@ -2,6 +2,7 @@ import { Message, processKeywordTrackerResult } from "./actions";
 import { createClient } from "@supabase/supabase-js";
 
 // export const runtime = "edge"; // (원한다면 사용)
+export const maxDuration = 3;
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE ?? "";
@@ -20,7 +21,7 @@ const queues = createClient(supabaseUrl, supabaseKey, {
   },
 });
 
-const MESSAGE_LIMIT = 10;
+const MESSAGE_LIMIT = 1;
 
 export async function GET(request: Request) {
   const envServiceRole = process.env.SUPABASE_SERVICE_ROLE;
@@ -135,7 +136,7 @@ export async function GET(request: Request) {
 
       // 현재 라우트(URL)로 다시 GET 요청을 보냄
       // 헤더에 X-Secret-Key도 포함
-      fetch(request.url, {
+      await fetch(request.url, {
         method: "GET",
         headers: {
           "X-Secret-Key": incomingKey ?? "",

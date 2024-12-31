@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { sendKakaoMessageAction } from "./actions";
 
 // export const runtime = "edge"; // (원한다면 사용)
+export const maxDuration = 3;
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE ?? "";
@@ -21,7 +22,7 @@ const queues = createClient(supabaseUrl, supabaseKey, {
 });
 
 // 한 번에 처리할 메시지 수
-const MESSAGE_LIMIT = 10;
+const MESSAGE_LIMIT = 1;
 
 export async function GET(request: Request) {
   const incomingKey = request.headers.get("X-Secret-Key");
