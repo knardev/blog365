@@ -108,18 +108,18 @@ export async function fetchKeywordTrackerWithResults(
   // 2) transformedData 생성
   const KST = "Asia/Seoul";
   // 현재 UTC 기준 시간을 한국시간으로 변환
-  const nowInKST = toZonedTime(new Date(), KST);
+  const now = new Date();
 
   // 한국시간 기준 오늘 날짜
-  const today = formatInTimeZone(nowInKST, KST, "yyyy-MM-dd");
+  const today = formatInTimeZone(now, KST, "yyyy-MM-dd");
 
   // 한국시간 기준 어제 날짜
-  const yesterdayDateInKST = subDays(nowInKST, 1);
-  const yesterday = formatInTimeZone(yesterdayDateInKST, KST, "yyyy-MM-dd");
+  const yesterdayDate = subDays(now, 1);
+  const yesterday = formatInTimeZone(yesterdayDate, KST, "yyyy-MM-dd");
 
   // 어제 기준 7일 전 날짜
-  const weekAgoDateInKST = subDays(yesterdayDateInKST, 7);
-  const weekAgo = formatInTimeZone(weekAgoDateInKST, KST, "yyyy-MM-dd");
+  const weekAgoDate = subDays(yesterdayDate, 7);
+  const weekAgo = formatInTimeZone(weekAgoDate, KST, "yyyy-MM-dd");
 
   const transformedData: KeywordTrackerTransformed[] = mergedData.map(
     (tracker) => {
