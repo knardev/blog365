@@ -14,6 +14,7 @@ import {
 import { defineFetchKeywordTrackerWithCategoriesQuery } from "@/features/tracker/queries/define-fetch-keyword-tracker-with-catgory";
 import { subDays } from "date-fns";
 import { formatInTimeZone } from "date-fns-tz";
+import { cache } from "react";
 
 /**
  * Fetches keyword trackers, merges analytics, calculates daily results, etc.
@@ -23,12 +24,12 @@ import { formatInTimeZone } from "date-fns-tz";
  * @param strictMode - if true, more strict criteria for 'catch_success'
  * @returns KeywordTrackerWithResultsResponse or null
  */
-export async function fetchKeywordTrackerWithResults(
+export const fetchKeywordTrackerWithResults = cache(async (
   projectSlug: string,
   startDate?: string,
   endDate?: string,
   strictMode = false, // 기본값: false
-): Promise<KeywordTrackerWithResultsResponse | null> {
+): Promise<KeywordTrackerWithResultsResponse | null> => {
   const { data: projectData, error: projectError } = await createClient()
     .from("projects")
     .select("id")
@@ -212,7 +213,7 @@ export async function fetchKeywordTrackerWithResults(
     today_catch_count: todayCatchCount,
     week_catch_count: weekCatchCount,
   };
-}
+});
 
 // {
 //   "data": [

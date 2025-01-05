@@ -8,6 +8,8 @@ import { KeywordTrackerHeader } from "@/features/tracker/components/keyword-trac
 import { subDays } from "date-fns";
 import { formatInTimeZone } from "date-fns-tz";
 
+export const revalidate = 3600;
+
 export default async function Page({
   params,
   searchParams, // 여기서 쿼리 파라미터를 받을 수 있음
