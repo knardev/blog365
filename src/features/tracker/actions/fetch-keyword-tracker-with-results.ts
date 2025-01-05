@@ -1,9 +1,6 @@
-// "use server";
-
 import {
   DailyResult,
   KeywordTrackerTransformed,
-  KeywordTrackerWithResults,
   KeywordTrackerWithResultsResponse,
   MergedDataRow,
 } from "../types/types";
@@ -14,17 +11,25 @@ import {
 import {
   defineFetchKeywordTrackerResultsQuery,
 } from "@/features/tracker/queries/define-fetch-keyword-tracker-result";
-import {
-  defineFetchKeywordTrackerWithCategoriesQuery,
-} from "@/features/tracker/queries/define-fetch-keyword-tracker-with-catgory";
+import { defineFetchKeywordTrackerWithCategoriesQuery } from "@/features/tracker/queries/define-fetch-keyword-tracker-with-catgory";
 import { subDays } from "date-fns";
-import { formatInTimeZone, toZonedTime } from "date-fns-tz";
+import { formatInTimeZone } from "date-fns-tz";
+import { cache } from "react";
 
-export async function fetchKeywordTrackerWithResults(
+/**
+ * Fetches keyword trackers, merges analytics, calculates daily results, etc.
+ * @param projectSlug - Slug of the project
+ * @param startDate - optional start date
+ * @param endDate - optional end date
+ * @param strictMode - if true, more strict criteria for 'catch_success'
+ * @returns KeywordTrackerWithResultsResponse or null
+ */
+export const fetchKeywordTrackerWithResults = cache(async (
   projectSlug: string,
   startDate?: string,
   endDate?: string,
-): Promise<KeywordTrackerWithResultsResponse | null> {
+  strictMode = false, // 기본값: false
+): Promise<KeywordTrackerWithResultsResponse | null> => {
   const { data: projectData, error: projectError } = await createClient()
     .from("projects")
     .select("id")
@@ -107,7 +112,6 @@ export async function fetchKeywordTrackerWithResults(
 
   // 2) transformedData 생성
   const KST = "Asia/Seoul";
-  // 현재 UTC 기준 시간을 한국시간으로 변환
   const now = new Date();
 
   // 한국시간 기준 오늘 날짜
@@ -121,6 +125,12 @@ export async function fetchKeywordTrackerWithResults(
   const weekAgoDate = subDays(yesterdayDate, 7);
   const weekAgo = formatInTimeZone(weekAgoDate, KST, "yyyy-MM-dd");
 
+  // strictMode에 따라 인기글/일반글의 최대 rank 결정
+  // strictMode: 인기글 = 3위 이하, 일반글 = 2위 이하
+  // !strictMode: 인기글 = 7위 이하, 일반글 = 3위 이하
+  const maxRankPopular = strictMode ? 2 : 7;
+  const maxRankNormal = strictMode ? 2 : 3;
+
   const transformedData: KeywordTrackerTransformed[] = mergedData.map(
     (tracker) => {
       const resultsMap: Record<string, DailyResult> = {};
@@ -133,17 +143,22 @@ export async function fetchKeywordTrackerWithResults(
         }
 
         // 성공 여부 계산
-        if (
-          result.smart_block_name?.includes("인기글") &&
-          result.rank_in_smart_block !== null &&
-          result.rank_in_smart_block <= 7
-        ) {
-          resultsMap[date].catch_success += 1;
-        } else if (
-          result.rank_in_smart_block !== null &&
-          result.rank_in_smart_block <= 3
-        ) {
-          resultsMap[date].catch_success += 1;
+        if (result.smart_block_name?.includes("인기글")) {
+          // 인기글일 때
+          if (
+            result.rank_in_smart_block !== null &&
+            result.rank_in_smart_block <= maxRankPopular
+          ) {
+            resultsMap[date].catch_success += 1;
+          }
+        } else {
+          // 일반 글일 때
+          if (
+            result.rank_in_smart_block !== null &&
+            result.rank_in_smart_block <= maxRankNormal
+          ) {
+            resultsMap[date].catch_success += 1;
+          }
         }
 
         resultsMap[date].catch_result.push({
@@ -183,12 +198,12 @@ export async function fetchKeywordTrackerWithResults(
 
   const todayCatchCount = transformedData.filter((tracker) => {
     const todayResult = tracker.keyword_tracker_results[yesterday];
-    return todayResult?.catch_success ?? 0 > 0;
+    return (todayResult?.catch_success ?? 0) > 0;
   }).length;
 
   const weekCatchCount = transformedData.filter((tracker) => {
     const weekAgoResult = tracker.keyword_tracker_results[weekAgo];
-    return weekAgoResult?.catch_success ?? 0 > 0;
+    return (weekAgoResult?.catch_success ?? 0) > 0;
   }).length;
 
   // 4) 최종 결과 반환
@@ -198,7 +213,7 @@ export async function fetchKeywordTrackerWithResults(
     today_catch_count: todayCatchCount,
     week_catch_count: weekCatchCount,
   };
-}
+});
 
 // {
 //   "data": [

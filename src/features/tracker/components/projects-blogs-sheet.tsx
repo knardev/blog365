@@ -11,21 +11,18 @@ import {
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { ProjectsBlogsCards } from "./projects-blogs-cards";
-import { ProjectBlogSelectionCombobox } from "./projects-blogs-selection-combobox";
 import { ProjectsBlogsWithDetail } from "@/features/tracker/queries/define-fetch-projects-blogs";
 import { Blog } from "@/features/blogs/types/types";
 
 export function ProjectsBlogsSheet({
-  blogs,
-  availableBlogs,
+  blogs, // 기존 프로젝트에 등록된 블로그들
+  availableBlogs, // 전체 블로그 리스트
   projectSlug,
 }: {
   blogs: ProjectsBlogsWithDetail[];
   availableBlogs: Blog[];
   projectSlug: string;
 }) {
-  const existingBlogIds = new Set(blogs.map((pb) => pb.blog_id ?? ""));
-
   return (
     <Sheet>
       <SheetTrigger asChild>
@@ -41,12 +38,12 @@ export function ProjectsBlogsSheet({
           </SheetDescription>
         </SheetHeader>
         <div className="mt-3 space-y-3">
-          <ProjectBlogSelectionCombobox
+          {/* 블로그 목록을 카드 형태로 모두 출력 */}
+          <ProjectsBlogsCards
+            projectBlogs={blogs}
             availableBlogs={availableBlogs}
-            existingBlogIds={existingBlogIds}
             projectSlug={projectSlug}
           />
-          <ProjectsBlogsCards blogs={blogs} projectSlug={projectSlug} />
         </div>
         <SheetFooter>
           <SheetClose asChild>

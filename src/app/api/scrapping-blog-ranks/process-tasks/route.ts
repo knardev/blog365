@@ -136,7 +136,7 @@ export async function GET(request: Request) {
 
       // 현재 라우트(URL)로 다시 GET 요청을 보냄
       // 헤더에 X-Secret-Key도 포함
-      await fetch(request.url, {
+      fetch(request.url, {
         method: "GET",
         headers: {
           "X-Secret-Key": incomingKey ?? "",

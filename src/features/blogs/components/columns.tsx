@@ -38,17 +38,16 @@ export function generateColumns(
         </div>
       ),
       cell: ({ row }) => {
-        // a tag https://search.naver.com/search.naver?where=nexearch&sm=top_hty&fbm=0&ie=utf8&query=%EA%B5%AC%EB%AF%B8%EB%8F%99%EC%B9%98%EA%B3%BC
-
         const original = row.original;
+
+        // 예시: original.isInfluencer를 기준으로 링크 분기
+        const link = original.is_influencer
+          ? `https://in.naver.com/${original.blog_slug}`
+          : `https://blog.naver.com/${original.blog_slug}`;
+
         return (
           <div>
-            <a
-              href={`https://blog.naver.com/${original.blog_slug}`}
-              target="_blank"
-              rel="noreferrer"
-              className=""
-            >
+            <a href={link} target="_blank" rel="noreferrer">
               {original.blog_slug}
             </a>
           </div>

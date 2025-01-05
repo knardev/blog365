@@ -11,7 +11,8 @@ import { createClient } from "@/utils/supabase/server";
 export const defineAddBlogQuery = (
   profileId: string,
   blogName: string,
-  blogSlug: string
+  blogSlug: string,
+  isInfluencer: boolean = false,
 ) => {
   return createClient()
     .from("blogs")
@@ -19,6 +20,7 @@ export const defineAddBlogQuery = (
       owner_profile_id: profileId,
       name: blogName,
       blog_slug: blogSlug,
+      is_influencer: isInfluencer,
     })
     .select();
 };

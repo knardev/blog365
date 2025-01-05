@@ -1,11 +1,13 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { fetchBlog } from "@/features/blogs/actions/fetch-blogs";
 import { fetchProjectsBlogs } from "@/features/tracker/actions/fetch-projects-blogs";
 import { fetchKeywordCategories } from "@/features/setting/actions/fetch-keyword-categories";
 import { ProjectsBlogsSheet } from "@/features/tracker/components/projects-blogs-sheet";
 import { KeywordTrackerAddSheet } from "@/features/tracker/components/keyword-tracker-add-sheet";
-import { KeywordTrackerWithResultsResponse } from "@/features/tracker/types/types";
+import { KeywordTrackerWithResultsResponse } from "@/features/tracker/types/types"; // 방금 만든 atom 임포트
+import { StrictModeSwitch } from "./strict-mode-switch";
 
 export async function KeywordTrackerHeader({
   profileId,
@@ -39,20 +41,22 @@ export async function KeywordTrackerHeader({
   const totalKeywords = keywordTrackers.length;
 
   return (
-    <div className="w-full max-w-7xl space-y-4">
+    <div className="w-full space-y-4">
       {/* Buttons in a responsive row */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:justify-end gap-2">
-        <ProjectsBlogsSheet
-          blogs={projectBlogs}
-          availableBlogs={availableBlogs}
-          projectSlug={projectSlug}
-        />
-        <KeywordTrackerAddSheet
-          projectSlug={projectSlug}
-          keywordCategories={keywordCategories ?? []}
-        />
+      <div className="flex justify-between items-center">
+        <StrictModeSwitch />
+        <div className="flex gap-2">
+          <ProjectsBlogsSheet
+            blogs={projectBlogs}
+            availableBlogs={availableBlogs}
+            projectSlug={projectSlug}
+          />
+          <KeywordTrackerAddSheet
+            projectSlug={projectSlug}
+            keywordCategories={keywordCategories ?? []}
+          />
+        </div>
       </div>
-
       {/* Cards in a responsive grid */}
       <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
         {/* Total Keywords Card */}

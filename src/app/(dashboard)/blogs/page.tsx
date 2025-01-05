@@ -2,7 +2,6 @@ import { redirect } from "next/navigation";
 import { fetchBlogsWithAnalytics } from "@/features/blogs/actions/fetch-blogs-with-analytics";
 import { BlogsDataTable } from "@/features/blogs/components/blog-data-table";
 import { getProfileData } from "@/features/common/actions/get-profile";
-import { generateMockData } from "@/features/blogs/actions/mock-data";
 import { LoggedInUser } from "@/features/common/types/types";
 import { format, subDays } from "date-fns";
 import { formatInTimeZone, toZonedTime } from "date-fns-tz";
@@ -43,14 +42,4 @@ export default async function Page() {
       />
     </div>
   );
-
-  // const data = generateMockData();
-  // Collect all unique dates from mock analytics
-  // const dateSet = new Set<string>();
-  // data.forEach((blog) => {
-  //   Object.keys(blog.blog_analytics).forEach((date) => dateSet.add(date));
-  // });
-  // const allDates = Array.from(dateSet).sort();
-
-  // return <BlogsDataTable data={data} allDates={allDates} />;
 }
