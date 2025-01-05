@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRecoilValue } from "recoil";
 import {
   ColumnFiltersState,
   SortingState,
@@ -26,23 +27,34 @@ import {
   KeywordTrackerWithResultsResponse,
 } from "@/features/tracker/types/types";
 import { generateColumns } from "@/features/tracker/components/columns";
+import { KeywordCategories } from "@/features/setting/queries/define-fetch-keyword-categories";
+import { strictModeState } from "@/features/tracker/atoms/states";
 
 interface KeywordTrackerDataTableProps {
   data: KeywordTrackerWithResultsResponse;
   allDates: string[];
+  keywordCategories: KeywordCategories[];
+  projectSlug: string;
 }
 
 export function KeywordTrackerDataTable({
   data,
   allDates,
+  keywordCategories,
+  projectSlug,
 }: KeywordTrackerDataTableProps) {
   const keywordTrakers: KeywordTrackerTransformed[] = data.keyword_trackers;
-  const columns = React.useMemo(() => generateColumns(allDates), [allDates]);
 
+  const strictMode = useRecoilValue(strictModeState);
   // Table states
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+
+  const columns = React.useMemo(
+    () => generateColumns(allDates, keywordCategories, projectSlug),
+    [allDates, keywordCategories, projectSlug]
+  );
 
   // Initialize the table
   const table = useReactTable({

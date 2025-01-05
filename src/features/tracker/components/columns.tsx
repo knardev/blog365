@@ -1,6 +1,5 @@
 // generateColumns.ts
 import { ColumnDef } from "@tanstack/react-table";
-import { KeywordTrackerTransformed } from "@/features/tracker/types/types";
 import {
   HoverCard,
   HoverCardContent,
@@ -17,6 +16,17 @@ import {
 } from "@/components/ui/table";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
+import { KeywordTrackerTransformed } from "@/features/tracker/types/types";
+import { CategorySelector } from "@/features/tracker/components/category-selector";
+import { KeywordCategories } from "@/features/setting/queries/define-fetch-keyword-categories";
+
+/**
+ * 숫자를 3자리 단위로 콤마를 찍어주는 유틸 함수
+ */
+function formatNumber(value: number | null | undefined): string {
+  if (value === null || value === undefined) return "";
+  return value.toLocaleString("ko-KR");
+}
 
 /**
  * Generate columns for KeywordTrackerWithResults table
@@ -24,7 +34,9 @@ import { ko } from "date-fns/locale";
  * @returns Array of ColumnDef
  */
 export function generateColumns(
-  allDates: string[]
+  allDates: string[],
+  keywordCategories: KeywordCategories[],
+  projectSlug: string
 ): ColumnDef<KeywordTrackerTransformed>[] {
   // Static columns
   const staticColumns: ColumnDef<KeywordTrackerTransformed>[] = [
@@ -32,8 +44,6 @@ export function generateColumns(
       accessorKey: "keywords.name",
       header: ({ column }) => <SortableHeader column={column} title="키워드" />,
       cell: ({ row }) => {
-        // a tag https://search.naver.com/search.naver?where=nexearch&sm=top_hty&fbm=0&ie=utf8&query=%EA%B5%AC%EB%AF%B8%EB%8F%99%EC%B9%98%EA%B3%BC
-
         const original = row.original;
         const searchUrl = `https://search.naver.com/search.naver?where=nexearch&sm=top_hty&fbm=0&ie=utf8&query=${original.keywords?.name}`;
         return (
@@ -58,10 +68,15 @@ export function generateColumns(
         <SortableHeader column={column} title="카테고리" />
       ),
       cell: ({ row }) => {
+        const tracker = row.original;
         return (
-          <div className="text-center select-none">
-            {row.original.keyword_categories?.name}
-          </div>
+          <CategorySelector
+            trackerId={tracker.id}
+            currentCategoryId={tracker.keyword_categories?.id || null}
+            currentCategoryName={tracker.keyword_categories?.name || null}
+            keywordCategories={keywordCategories}
+            projectSlug={projectSlug}
+          />
         );
       },
       size: 85,
@@ -77,13 +92,12 @@ export function generateColumns(
         <SortableHeader column={column} title="월간 검색량" />
       ),
       cell: ({ row }) => {
-        const original = row.original;
-        const analytics = original.keyword_analytics;
+        const analytics = row.original.keyword_analytics;
         return (
           <HoverCard openDelay={100} closeDelay={100}>
             <HoverCardTrigger asChild>
               <div className="text-center cursor-pointer">
-                {row.original.keyword_analytics?.montly_search_volume}
+                {formatNumber(analytics?.montly_search_volume)}
               </div>
             </HoverCardTrigger>
             <HoverCardPortal>
@@ -91,18 +105,12 @@ export function generateColumns(
                 <h4 className="font-bold text-sm">상세데이터</h4>
                 <Table>
                   <TableBody>
-                    {/* <TableRow key={`${analytics?.id}-month`}>
-                      <TableCell className="font-medium">총합/월</TableCell>
-                      <TableCell className="font-semibold">
-                        {analytics?.montly_search_volume}
-                      </TableCell>
-                    </TableRow> */}
                     <TableRow key={`${analytics?.id}-month-pc`}>
                       <TableCell className="font-medium text-xs">
                         월간 PC
                       </TableCell>
                       <TableCell className="font-semibold text-sm">
-                        {analytics?.montly_pc_search_volume}
+                        {formatNumber(analytics?.montly_pc_search_volume)}
                       </TableCell>
                     </TableRow>
                     <TableRow key={`${analytics?.id}-month-mo`}>
@@ -110,7 +118,7 @@ export function generateColumns(
                         월간 모바일
                       </TableCell>
                       <TableCell className="font-semibold text-sm">
-                        {analytics?.montly_mobile_search_volume}
+                        {formatNumber(analytics?.montly_mobile_search_volume)}
                       </TableCell>
                     </TableRow>
                     <TableRow key={`${analytics?.id}-daily-pc`}>
@@ -118,7 +126,7 @@ export function generateColumns(
                         일간 PC
                       </TableCell>
                       <TableCell className="font-semibold text-sm">
-                        {analytics?.daily_pc_search_volume}
+                        {formatNumber(analytics?.daily_pc_search_volume)}
                       </TableCell>
                     </TableRow>
                     <TableRow key={`${analytics?.id}-daily-mo`}>
@@ -126,7 +134,7 @@ export function generateColumns(
                         일간 모바일
                       </TableCell>
                       <TableCell className="font-semibold text-sm">
-                        {analytics?.daily_mobile_search_volume}
+                        {formatNumber(analytics?.daily_mobile_search_volume)}
                       </TableCell>
                     </TableRow>
                   </TableBody>
@@ -150,13 +158,12 @@ export function generateColumns(
         <SortableHeader column={column} title="월간 발행량" />
       ),
       cell: ({ row }) => {
-        const original = row.original;
-        const analytics = original.keyword_analytics;
+        const analytics = row.original.keyword_analytics;
         return (
           <HoverCard openDelay={100} closeDelay={100}>
             <HoverCardTrigger asChild>
               <div className="text-center cursor-pointer text-sm">
-                {row.original.keyword_analytics?.montly_issue_volume}
+                {formatNumber(analytics?.montly_issue_volume)}
               </div>
             </HoverCardTrigger>
             <HoverCardPortal>
@@ -169,7 +176,7 @@ export function generateColumns(
                         월간 발행량
                       </TableCell>
                       <TableCell className="font-semibold text-sm">
-                        {analytics?.montly_issue_volume}
+                        {formatNumber(analytics?.montly_issue_volume)}
                       </TableCell>
                     </TableRow>
                     <TableRow key={`${analytics?.id}-daily`}>
@@ -177,7 +184,7 @@ export function generateColumns(
                         일간 발행량
                       </TableCell>
                       <TableCell className="font-semibold text-sm">
-                        {analytics?.daily_issue_volume}
+                        {formatNumber(analytics?.daily_issue_volume)}
                       </TableCell>
                     </TableRow>
                   </TableBody>
@@ -201,11 +208,10 @@ export function generateColumns(
         <SortableHeader column={column} title="일간 노출량" />
       ),
       cell: ({ row }) => {
-        const original = row.original;
-        const analytics = original.keyword_analytics;
+        const analytics = row.original.keyword_analytics;
         return (
           <div className="text-center select-none">
-            {analytics?.daily_first_page_exposure}
+            {formatNumber(analytics?.daily_first_page_exposure)}
           </div>
         );
       },

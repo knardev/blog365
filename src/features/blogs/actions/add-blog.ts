@@ -16,14 +16,15 @@ export async function addBlog({
   profileId,
   blogName,
   blogSlug,
+  isInfluencer,
   revalidateTargetPath,
 }: {
   profileId: string;
   blogName: string;
   blogSlug: string;
+  isInfluencer: boolean;
   revalidateTargetPath?: string;
 }): Promise<void> {
-
   // Ensure that the slug is unique
   const { data: existingBlog, error: fetchError } = await createClient()
     .from("blogs")
@@ -41,7 +42,12 @@ export async function addBlog({
   }
 
   // Add the blog
-  const { data, error } = await defineAddBlogQuery(profileId, blogName, blogSlug);
+  const { data, error } = await defineAddBlogQuery(
+    profileId,
+    blogName,
+    blogSlug,
+    isInfluencer,
+  );
 
   if (error) {
     console.error("Error adding blog:", error);

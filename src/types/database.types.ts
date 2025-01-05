@@ -46,6 +46,7 @@ export type Database = {
           blog_slug: string
           created_at: string
           id: string
+          is_influencer: boolean | null
           name: string | null
           owner_profile_id: string | null
         }
@@ -53,6 +54,7 @@ export type Database = {
           blog_slug: string
           created_at?: string
           id?: string
+          is_influencer?: boolean | null
           name?: string | null
           owner_profile_id?: string | null
         }
@@ -60,6 +62,7 @@ export type Database = {
           blog_slug?: string
           created_at?: string
           id?: string
+          is_influencer?: boolean | null
           name?: string | null
           owner_profile_id?: string | null
         }

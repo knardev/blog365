@@ -126,7 +126,7 @@ export async function GET(request: Request) {
     console.log("[INFO] More messages remain. Invoking self again...");
 
     // self-invocation
-    await fetch(request.url, {
+    fetch(request.url, {
       method: "GET",
       headers: {
         "X-Secret-Key": incomingKey ?? "",

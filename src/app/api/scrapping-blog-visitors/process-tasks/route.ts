@@ -145,7 +145,7 @@ export async function GET(request: Request) {
 
       // 새 요청을 GET으로 호출(현재 route URL)
       // X-Secret-Key 헤더를 다시 전달
-      await fetch(request.url, {
+      fetch(request.url, {
         method: "GET",
         headers: {
           "X-Secret-Key": incomingKey ?? "",

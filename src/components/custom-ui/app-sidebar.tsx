@@ -12,6 +12,7 @@ import {
   LifeBuoy,
   Send,
   ScanSearch,
+  TextCursor,
   ChartBarDecreasing,
   Settings,
 } from "lucide-react";
@@ -31,8 +32,6 @@ import {
   SidebarFooter,
 } from "@/components/ui/sidebar";
 import { ModeToggle } from "@/components/custom-ui/mode-toggle";
-import { NavSecondary } from "./nav-secondary";
-import { LoggedInUser } from "@/features/common/types/types";
 
 const data = {
   projectSetting: [
@@ -46,16 +45,6 @@ const data = {
       url: "/setting",
       icon: Settings,
     },
-    // {
-    //   title: "카카오 알림",
-    //   url: "/kakao",
-    //   icon: Send,
-    // },
-    // {
-    //   title: "멤버 관리",
-    //   url: "/member",
-    //   icon: Users,
-    // },
   ],
   navSecondary: [
     {
@@ -185,6 +174,20 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     <ScanSearch />
                     키워드 조회
                   </button>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild tooltip="제목짓기">
+                  <a
+                    href="https://funneling.vercel.app/title"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <TextCursor />
+                    제목짓기
+                  </a>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>

@@ -146,7 +146,7 @@ const TableHead = React.forwardRef<
 
     // 4) 마지막 열 테두리 (예시)
     if (isLastSticky) {
-      computedClasses.push("md:border-r");
+      computedClasses.push("md:border-r md:shadow-md md:transition-shadow");
     }
 
     // 최종 클래스
@@ -219,7 +219,7 @@ const TableCell = React.forwardRef<
           (isStickyColumn || isStickyRow) && "md:sticky md:bg-background",
           isStickyMobileColumn && "sticky bg-background",
           isStickyRow && "top-0",
-          isLastSticky && "md:border-r",
+          isLastSticky && "md:border-r md:shadow-md",
           zIndexClass,
           className
         )}
