@@ -20,7 +20,7 @@ const queues = createClient(supabaseUrl, supabaseKey, {
   },
 });
 
-const MESSAGE_LIMIT = 5; // 테스트 목적: 1개씩 처리
+const MESSAGE_LIMIT = 40; // 테스트 목적: 1개씩 처리
 
 // ★ 추가: 오늘 날짜에 이미 존재하는지 체크하는 함수
 async function serpResultExists(keywordId: string): Promise<boolean> {
@@ -49,7 +49,7 @@ async function delay(ms: number) {
 }
 
 export async function GET(request: Request) {
-  await delay(500); // 1초 대기
+  // await delay(1500); // 1초 대기
 
   const incomingKey = request.headers.get("X-Secret-Key");
   const envServiceRole = process.env.SUPABASE_SERVICE_ROLE;

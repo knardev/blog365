@@ -86,10 +86,14 @@ export async function sendKakaoMessageAction(
     const yesterdayInKST = subDays(nowInKST, 1);
 
     // Supabase 쿼리용: yyyy-MM-dd 형식
-    const dateString = formatInTimeZone(yesterdayInKST, KST, "yyyy-MM-dd");
+    const dateString = formatInTimeZone(nowInKST, KST, "yyyy-MM-dd");
+    // const dateString = formatInTimeZone(yesterdayInKST, KST, "yyyy-MM-dd");
 
     // 한국시간 기준 어제 날짜 포맷: MM/dd (요일)
     const yesterdayStr = formatInTimeZone(yesterdayInKST, KST, "MM/dd (EEE)", {
+      locale: ko,
+    });
+    const todayStr = formatInTimeZone(nowInKST, KST, "MM/dd (EEE)", {
       locale: ko,
     });
 
@@ -172,7 +176,7 @@ export async function sendKakaoMessageAction(
     const successPercentage = ((filteredResults.length / totalTrackers) * 100)
       .toFixed(1);
     let messageText =
-      `💌최블레포트\n[${projectName}] ${yesterdayStr} 상위노출 결과가 도착했어요✨\n`;
+      `💌최블레포트\n[${projectName}] ${todayStr} 상위노출 결과가 도착했어요✨\n`;
     messageText +=
       `총 키워드 ${totalTrackers}개 중에 ${filteredResults.length}개의 포스팅이 첫번째 화면에 노출됐어요. (${successPercentage}%)\n\n`;
     messageText += `키워드 | 스마트블럭 | 순위\n`;

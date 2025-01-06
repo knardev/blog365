@@ -29,7 +29,7 @@ const queues = createClient(supabaseUrl, supabaseKey, {
   },
 });
 
-const MESSAGE_LIMIT = 20;
+const MESSAGE_LIMIT = 100;
 
 /**
  * 오늘 날짜 데이터가 이미 존재하는지 확인하는 함수
@@ -37,12 +37,13 @@ const MESSAGE_LIMIT = 20;
  * @returns {Promise<boolean>} 이미 존재하면 true, 없으면 false
  */
 async function trackerResultExists(trackerId: string): Promise<boolean> {
-  const today = getYesterdayInKST();
+  // const today = getYesterdayInKST();
+  const today = getTodayInKST();
 
   const { data, error } = await supabase
     .from("keyword_tracker_results")
     .select("*")
-    .eq("tracker_id", trackerId)
+    .eq("keyword_tracker", trackerId)
     .eq("date", today)
     .single(); // single()을 사용하여 한 개의 결과만 가져옴
 

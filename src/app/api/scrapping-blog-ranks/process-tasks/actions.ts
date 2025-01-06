@@ -38,8 +38,8 @@ export interface QueueMessage {
 export async function processKeywordTrackerResult(message: Message) {
   // console.log("[ACTION] Processing message:", message);
   const { tracker_id, keyword_id, blog_id } = message;
-  // const today = getTodayInKST();
-  const today = getYesterdayInKST();
+  const today = getTodayInKST();
+  // const today = getYesterdayInKST();
   const resultsToInsert: TablesInsert<"keyword_tracker_results">[] = [];
 
   console.log(
@@ -91,53 +91,52 @@ export async function processKeywordTrackerResult(message: Message) {
     console.warn(
       `[WARN] No SERP results found for keyword ${keyword_id} on ${today}.`,
     );
-    return { success: false, message: "No SERP results found." };
+    return { success: true, message: "No SERP results found." };
   }
 
   // Extract data from `smart_block_datas` and `basic_block_datas`
-  for (const serpResult of serpResults) {
-    const { smart_block_datas, basic_block_datas } = serpResult;
+  const serpResult = serpResults[0];
+  const { smart_block_datas, basic_block_datas } = serpResult;
 
-    // Process `smart_block_datas`
-    if (smart_block_datas && Array.isArray(smart_block_datas)) {
-      for (const block of smart_block_datas) {
-        const { items } = block;
+  // Process `smart_block_datas`
+  if (smart_block_datas && Array.isArray(smart_block_datas)) {
+    for (const block of smart_block_datas) {
+      const { items } = block;
 
-        if (!items || !Array.isArray(items)) continue;
+      if (!items || !Array.isArray(items)) continue;
 
-        for (const item of items) {
-          if (item.isBlog && item.siteUrl.includes(blogSlug)) {
-            resultsToInsert.push({
-              keyword_tracker: tracker_id,
-              date: today,
-              rank_in_smart_block: item.rank,
-              blog_id: blog_id,
-              smart_block_name: block.title,
-              post_url: item.postUrl,
-            });
-          }
+      for (const item of items) {
+        if (item.isBlog && item.siteUrl.includes(blogSlug)) {
+          resultsToInsert.push({
+            keyword_tracker: tracker_id,
+            date: today,
+            rank_in_smart_block: item.rank,
+            blog_id: blog_id,
+            smart_block_name: block.title,
+            post_url: item.postUrl,
+          });
         }
       }
     }
+  }
 
-    // Process `basic_block_datas`
-    if (basic_block_datas && Array.isArray(basic_block_datas)) {
-      for (const block of basic_block_datas) {
-        const { items } = block;
+  // Process `basic_block_datas`
+  if (basic_block_datas && Array.isArray(basic_block_datas)) {
+    for (const block of basic_block_datas) {
+      const { items } = block;
 
-        if (!items || !Array.isArray(items)) continue;
+      if (!items || !Array.isArray(items)) continue;
 
-        for (const item of items) {
-          if (item.isBlog && item.siteUrl.includes(blogSlug)) {
-            resultsToInsert.push({
-              keyword_tracker: tracker_id,
-              date: today,
-              rank_in_smart_block: item.rank,
-              blog_id: blog_id,
-              smart_block_name: block.title || "Basic Block", // Use "Basic Block" if no title is available
-              post_url: item.postUrl,
-            });
-          }
+      for (const item of items) {
+        if (item.isBlog && item.siteUrl.includes(blogSlug)) {
+          resultsToInsert.push({
+            keyword_tracker: tracker_id,
+            date: today,
+            rank_in_smart_block: item.rank,
+            blog_id: blog_id,
+            smart_block_name: block.title || "Basic Block", // Use "Basic Block" if no title is available
+            post_url: item.postUrl,
+          });
         }
       }
     }

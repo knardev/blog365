@@ -18,21 +18,42 @@ type VisitorData = {
   daily_visitor: number;
 };
 
+// 메시지 내의 message 필드 타입
+export interface MessageContent {
+  id: string;
+  blog_slug: string;
+}
+
+// 큐 메시지 타입
+export interface QueueMessage {
+  msg_id: number;
+  read_ct: number;
+  enqueued_at: string; // ISO 8601 datetime string
+  vt: string; // ISO 8601 datetime string
+  message: MessageContent;
+}
+
 export async function processBlogVisitorData(
   supabaseClient: SupabaseClient,
+  id: string,
   blogSlug: string,
 ): Promise<{ success: boolean; message?: string; error?: string }> {
   try {
     console.log("[INFO] Fetching blog_id for given blog_slug");
     const { data: blogData, error: blogError } = await supabaseClient
       .from("blogs")
-      .select("id")
-      .eq("blog_slug", blogSlug)
+      .select("id, is_influencer")
+      .eq("id", id)
       .single();
 
     if (blogError || !blogData) {
       console.error("[ERROR] Failed to fetch blog_id:", blogError);
       return { success: false, error: "Blog not found" };
+    }
+
+    if (blogData.is_influencer) {
+      console.log("[INFO] Skipping influencer blog");
+      return { success: true, message: "Influencer blog" };
     }
 
     const blogId = blogData.id;

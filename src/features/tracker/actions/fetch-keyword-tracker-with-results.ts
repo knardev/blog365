@@ -122,7 +122,7 @@ export const fetchKeywordTrackerWithResults = cache(async (
   const yesterday = formatInTimeZone(yesterdayDate, KST, "yyyy-MM-dd");
 
   // 어제 기준 7일 전 날짜
-  const weekAgoDate = subDays(yesterdayDate, 7);
+  const weekAgoDate = subDays(today, 7);
   const weekAgo = formatInTimeZone(weekAgoDate, KST, "yyyy-MM-dd");
 
   // strictMode에 따라 인기글/일반글의 최대 rank 결정
@@ -174,7 +174,7 @@ export const fetchKeywordTrackerWithResults = cache(async (
       });
 
       // 오늘 날짜의 일간 첫페이지 노출량 계산
-      const todayResult = resultsMap[yesterday];
+      const todayResult = resultsMap[today];
       const dailyFirstPageExposure = (todayResult?.catch_success ?? 0) *
         (tracker.keyword_analytics.daily_search_volume ?? 0);
 
@@ -197,7 +197,7 @@ export const fetchKeywordTrackerWithResults = cache(async (
   }, 0) * 0.2;
 
   const todayCatchCount = transformedData.filter((tracker) => {
-    const todayResult = tracker.keyword_tracker_results[yesterday];
+    const todayResult = tracker.keyword_tracker_results[today];
     return (todayResult?.catch_success ?? 0) > 0;
   }).length;
 

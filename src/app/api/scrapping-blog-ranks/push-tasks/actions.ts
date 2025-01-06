@@ -54,7 +54,6 @@ export async function pushKeywordTrackerTasks() {
     `[INFO] Found ${count} active keyword trackers. Preparing to fetch in pages...`,
   );
 
-  // 2) 페이지 단위로 키워드 트래커 가져오기
   let totalMessages: number = 0;
   const totalPages = Math.ceil(count / PAGE_SIZE); // 전체 페이지 수 계산
 
@@ -84,71 +83,32 @@ export async function pushKeywordTrackerTasks() {
     console.log(
       `[INFO] Fetched ${trackers.length} keyword trackers for page ${
         page + 1
-      }.`,
+      }. Processing in parallel...`,
     );
 
-    // 3) 각 트래커에 대해 관련 블로그 가져오기 및 메시지 생성
-    const messages: {
-      tracker_id: string;
-      keyword_id: string;
-      project_id: string;
-      blog_id: string;
-    }[] = [];
+    // 2) 병렬로 각 트래커 처리
+    const messagesPerPage = await Promise.all(
+      trackers.map((tracker) => processTracker(tracker)),
+    );
 
-    for (const tracker of trackers) {
-      if (!tracker.project_id) continue;
+    // 메시지를 모두 모으기 (각 트래커에 대해 여러 메시지가 생성될 수 있음)
+    const flattenedMessages = messagesPerPage.flat();
 
-      const { data: blogs, error: blogsError } = await supabase
-        .from("projects_blogs")
-        .select("blog_id")
-        .eq("project_id", tracker.project_id)
-        .eq("active", true);
-
-      if (blogsError) {
-        console.error(
-          `[ERROR] Failed to fetch blogs for project ${tracker.project_id}:`,
-          blogsError.message,
-        );
-        continue;
-      }
-
-      if (!blogs || blogs.length === 0) {
-        console.warn(
-          `[WARN] No active blogs found for project ${tracker.project_id}.`,
-        );
-        continue;
-      }
-
-      console.log(
-        `[INFO] Found ${blogs.length} active blogs for project ${tracker.project_id}.`,
-      );
-
-      // 메시지 생성
-      for (const blog of blogs) {
-        if (!blog.blog_id) continue;
-
-        messages.push({
-          tracker_id: tracker.id,
-          keyword_id: tracker.keyword_id,
-          project_id: tracker.project_id,
-          blog_id: blog.blog_id,
-        });
-      }
-    }
-
-    if (messages.length === 0) {
+    if (flattenedMessages.length === 0) {
       console.warn(`[WARN] No messages to enqueue for page ${page + 1}.`);
       continue;
     }
 
-    totalMessages += messages.length;
+    totalMessages += flattenedMessages.length;
 
-    console.log(`[INFO] Sending ${messages.length} messages to the queue...`);
+    console.log(
+      `[INFO] Sending ${flattenedMessages.length} messages to the queue...`,
+    );
 
-    // 4) 큐에 메시지 추가
+    // 3) 큐에 메시지 추가
     const { error: queueError } = await queues.rpc("send_batch", {
       queue_name: "blog_ranks_scrapping",
-      messages: messages,
+      messages: flattenedMessages,
       sleep_seconds: 0,
     });
 
@@ -159,7 +119,7 @@ export async function pushKeywordTrackerTasks() {
       );
     } else {
       console.log(
-        `[SUCCESS] Successfully added ${messages.length} tasks to the queue for page ${
+        `[SUCCESS] Successfully added ${flattenedMessages.length} tasks to the queue for page ${
           page + 1
         }.`,
       );
@@ -171,4 +131,60 @@ export async function pushKeywordTrackerTasks() {
   );
 
   return { success: true, count: totalMessages };
+}
+
+/**
+ * 각 트래커에 대해 블로그를 가져오고 메시지를 생성하는 함수
+ * @param tracker - 개별 트래커 객체
+ * @returns 메시지 객체 배열
+ */
+async function processTracker(tracker: {
+  id: string;
+  keyword_id: string;
+  project_id: string;
+}): Promise<
+  {
+    tracker_id: string;
+    keyword_id: string;
+    project_id: string;
+    blog_id: string;
+  }[]
+> {
+  if (!tracker.project_id) {
+    console.warn(`[WARN] Tracker ${tracker.id} has no project_id. Skipping...`);
+    return [];
+  }
+
+  const { data: blogs, error: blogsError } = await supabase
+    .from("projects_blogs")
+    .select("blog_id")
+    .eq("project_id", tracker.project_id)
+    .eq("active", true);
+
+  if (blogsError) {
+    console.error(
+      `[ERROR] Failed to fetch blogs for project ${tracker.project_id}:`,
+      blogsError.message,
+    );
+    return [];
+  }
+
+  if (!blogs || blogs.length === 0) {
+    console.warn(
+      `[WARN] No active blogs found for project ${tracker.project_id}.`,
+    );
+    return [];
+  }
+
+  console.log(
+    `[INFO] Found ${blogs.length} active blogs for project ${tracker.project_id}.`,
+  );
+
+  // 모든 블로그에 대해 메시지를 생성
+  return blogs.map((blog) => ({
+    tracker_id: tracker.id,
+    keyword_id: tracker.keyword_id,
+    project_id: tracker.project_id,
+    blog_id: blog.blog_id,
+  }));
 }

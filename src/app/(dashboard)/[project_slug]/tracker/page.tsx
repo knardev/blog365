@@ -7,6 +7,7 @@ import { LoggedInUser } from "@/features/common/types/types";
 import { KeywordTrackerHeader } from "@/features/tracker/components/keyword-tracker-header";
 import { subDays } from "date-fns";
 import { formatInTimeZone } from "date-fns-tz";
+import { getYesterdayInKST } from "@/utils/date";
 
 export const revalidate = 3600;
 export const maxDuration = 60;
@@ -40,6 +41,7 @@ export default async function Page({
     ),
     fetchKeywordCategories(params.project_slug),
   ]);
+  // console.log(fetchedData);
 
   // 현재 UTC 기준 시간을 한국시간으로 변환
   const KST = "Asia/Seoul";
@@ -50,7 +52,7 @@ export default async function Page({
 
   // 지난 30일의 날짜를 생성
   const allDates: string[] = Array.from({ length: 30 }, (_, index) => {
-    const date = subDays(yesterdayDate, index);
+    const date = subDays(now, index);
     return formatInTimeZone(date, KST, "yyyy-MM-dd");
   });
 
