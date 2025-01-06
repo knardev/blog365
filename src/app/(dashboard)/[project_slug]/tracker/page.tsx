@@ -9,6 +9,7 @@ import { subDays } from "date-fns";
 import { formatInTimeZone } from "date-fns-tz";
 
 export const revalidate = 3600;
+export const maxDuration = 60;
 
 export default async function Page({
   params,

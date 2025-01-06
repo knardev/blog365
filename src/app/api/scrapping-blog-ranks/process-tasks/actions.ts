@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { TablesInsert } from "@/types/database.types";
+import { getTodayInKST, getYesterdayInKST } from "@/utils/date";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE ?? "";
@@ -25,9 +26,20 @@ export interface Message {
   blog_id: string;
 }
 
+// 큐 메시지 타입
+export interface QueueMessage {
+  msg_id: number;
+  read_ct: number;
+  enqueued_at: string; // ISO 8601 datetime string
+  vt: string; // ISO 8601 datetime string
+  message: Message;
+}
+
 export async function processKeywordTrackerResult(message: Message) {
+  // console.log("[ACTION] Processing message:", message);
   const { tracker_id, keyword_id, blog_id } = message;
-  const today = new Date().toISOString().split("T")[0];
+  // const today = getTodayInKST();
+  const today = getYesterdayInKST();
   const resultsToInsert: TablesInsert<"keyword_tracker_results">[] = [];
 
   console.log(
@@ -132,8 +144,8 @@ export async function processKeywordTrackerResult(message: Message) {
   }
 
   if (resultsToInsert.length === 0) {
-    console.warn(
-      `[WARN] No data to insert for tracker_id: ${tracker_id}, blog_id: ${blog_id}`,
+    console.log(
+      `[INFO] No data to insert for tracker_id: ${tracker_id}, blog_id: ${blog_id}`,
     );
     return { success: true, message: "No data to insert." };
   }

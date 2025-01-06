@@ -25,50 +25,92 @@ const queues = createClient(supabaseUrl, supabaseKey, {
   },
 });
 
+const PAGE_SIZE = 1000; // 한 페이지에 가져올 키워드 수
+
 export async function pushKeywordScrapingTasks() {
-  console.log("[ACTION] Fetching keywords from the `keywords` table...");
+  console.log("[ACTION] Fetching total keyword count...");
 
-  // Fetch all keywords
-  const { data: keywords, error: keywordsError } = await supabase
+  // 1) 키워드 총 개수 가져오기
+  const { count, error: countError } = await supabase
     .from("keywords")
-    .select("id, name");
+    .select("*", { count: "exact", head: true });
 
-  if (keywordsError) {
-    console.error("[ERROR] Failed to fetch keywords:", keywordsError.message);
-    return { success: false, error: keywordsError.message };
+  if (countError) {
+    console.error("[ERROR] Failed to fetch keyword count:", countError.message);
+    return { success: false, error: countError.message };
   }
 
-  if (!keywords || keywords.length === 0) {
+  if (!count || count === 0) {
     console.warn("[WARN] No keywords found in the `keywords` table.");
     return { success: false, error: "No keywords found in the database." };
   }
 
-  console.log(
-    `[INFO] Found ${keywords.length} keywords. Preparing messages...`,
-  );
+  console.log(`[INFO] Found ${count} keywords. Preparing to fetch in pages...`);
 
-  // Prepare task messages
-  const messages = keywords.map((keyword) => ({
-    id: keyword.id,
-    name: keyword.name,
-  }));
+  // 2) 페이지 단위로 키워드 가져오기
+  let totalMessages: number = 0;
+  const totalPages = Math.ceil(count / PAGE_SIZE); // 전체 페이지 수 계산
 
-  console.log(`[INFO] Sending ${messages.length} messages to the queue.`);
+  for (let page = 0; page < totalPages; page++) {
+    console.log(`[INFO] Fetching page ${page + 1} of ${totalPages}...`);
 
-  // Push tasks to the queue
-  const { error: queueError } = await queues.rpc("send_batch", {
-    queue_name: "keyword_data_scrapping",
-    messages: messages,
-    sleep_seconds: 0,
-  });
+    // 각 페이지별 키워드 가져오기
+    const { data: keywords, error: keywordsError } = await supabase
+      .from("keywords")
+      .select("id, name")
+      .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
 
-  if (queueError) {
-    console.error("[ERROR] Failed to enqueue messages:", queueError.message);
-    return { success: false, error: queueError.message };
+    if (keywordsError) {
+      console.error(
+        `[ERROR] Failed to fetch keywords for page ${page + 1}:`,
+        keywordsError.message,
+      );
+      continue; // 에러가 발생한 경우 해당 페이지 건너뜀
+    }
+
+    if (!keywords || keywords.length === 0) {
+      console.warn(`[WARN] No keywords found for page ${page + 1}.`);
+      continue;
+    }
+
+    console.log(
+      `[INFO] Fetched ${keywords.length} keywords for page ${page + 1}.`,
+    );
+
+    // 3) 메시지 생성
+    const messages = keywords.map((keyword) => ({
+      id: keyword.id,
+      name: keyword.name,
+    }));
+
+    totalMessages += messages.length;
+
+    console.log(`[INFO] Sending ${messages.length} messages to the queue...`);
+
+    // 4) 큐에 메시지 추가
+    const { error: queueError } = await queues.rpc("send_batch", {
+      queue_name: "keyword_data_scrapping",
+      messages: messages,
+      sleep_seconds: 0,
+    });
+
+    if (queueError) {
+      console.error(
+        `[ERROR] Failed to enqueue messages for page ${page + 1}:`,
+        queueError.message,
+      );
+    } else {
+      console.log(
+        `[SUCCESS] Successfully added ${messages.length} tasks to the queue for page ${
+          page + 1
+        }.`,
+      );
+    }
   }
 
   console.log(
-    `[SUCCESS] Successfully added ${messages.length} tasks to the queue.`,
+    `[INFO] All pages processed. Total messages sent: ${totalMessages}.`,
   );
-  return { success: true, count: messages.length };
+
+  return { success: true, count: totalMessages };
 }

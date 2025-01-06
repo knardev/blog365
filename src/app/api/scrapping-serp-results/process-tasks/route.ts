@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
-import { fetchSerpResults, saveSerpResults } from "./actions";
+import { fetchSerpResults, QueueMessage, saveSerpResults } from "./actions";
+import { getTodayInKST, getYesterdayInKST } from "@/utils/date";
 
-// export const runtime = "edge";
 export const maxDuration = 3;
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
@@ -20,9 +20,37 @@ const queues = createClient(supabaseUrl, supabaseKey, {
   },
 });
 
-const MESSAGE_LIMIT = 1; // 테스트 목적: 1개씩 처리
+const MESSAGE_LIMIT = 5; // 테스트 목적: 1개씩 처리
+
+// ★ 추가: 오늘 날짜에 이미 존재하는지 체크하는 함수
+async function serpResultExists(keywordId: string): Promise<boolean> {
+  // const today = getYesterdayInKST(); // 오늘 날짜는 KST 기준으로 어제
+  const today = getTodayInKST(); // 오늘 날짜는 KST 기준으로 어제
+  const supabase = createClient(supabaseUrl, supabaseKey);
+
+  const { data, error } = await supabase
+    .from("serp_results")
+    .select("*")
+    .eq("keyword_id", keywordId)
+    .eq("date", today)
+    .single();
+
+  // PGRST116 → row not found
+  if (error && error.code !== "PGRST116") {
+    console.error("Error checking existing SERP result:", error);
+    // 에러면 일단 false 리턴(존재하지 않는다고 가정) or throw
+  }
+
+  return !!data; // data 있으면 true
+}
+
+async function delay(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 export async function GET(request: Request) {
+  await delay(500); // 1초 대기
+
   const incomingKey = request.headers.get("X-Secret-Key");
   const envServiceRole = process.env.SUPABASE_SERVICE_ROLE;
 
@@ -49,7 +77,6 @@ export async function GET(request: Request) {
     );
   }
 
-  // 3) 메시지가 없는 경우 → 즉시 종료
   if (!messages || messages.length === 0) {
     console.log("[INFO] No messages found in the queue.");
     return new Response(
@@ -61,53 +88,107 @@ export async function GET(request: Request) {
     );
   }
 
-  // 4) 메시지 처리
-  for (const message of messages) {
-    const { id: keywordId, name: keyword } = message.message;
+  console.log(`[INFO] Processing ${messages.length} messages in parallel...`);
 
-    console.log(`[ACTION] Processing SERP results for keyword: ${keyword}`);
+  // 3) 병렬로 메시지 처리
+  await Promise.all(
+    messages.map(async (message: QueueMessage) => {
+      const { id: keywordId, name: keyword } = message.message;
 
-    const serpData = await fetchSerpResults(keyword);
+      try {
+        // ★ 먼저 DB에 이미 존재하는지 확인
+        const alreadyExists = await serpResultExists(keywordId);
+        if (alreadyExists) {
+          console.log(
+            `[SKIP] SERP result already exists for keywordId="${keywordId}". Skipping scraping.`,
+          );
 
-    if (!serpData) {
-      console.warn(`[WARN] No SERP data returned for keyword: ${keyword}`);
-      continue;
-    }
+          // 메시지 아카이브
+          const { error: archiveError } = await queues.rpc("archive", {
+            queue_name: "serp_scrapping",
+            message_id: message.msg_id,
+          });
 
-    const saveResult = await saveSerpResults(keywordId, serpData);
+          if (archiveError) {
+            console.error(
+              `[ERROR] Failed to archive message with id "${message.msg_id}":`,
+              archiveError,
+            );
+          } else {
+            console.log(`[INFO] Message archived with id: ${message.msg_id}`);
+          }
+          return;
+        }
 
-    if (!saveResult.success) {
-      console.error(
-        `[ERROR] Failed to save SERP data for keyword "${keyword}":`,
-        saveResult.error,
-      );
-      continue;
-    }
+        console.log(`[ACTION] Processing SERP results for keyword: ${keyword}`);
 
-    console.log(`[SUCCESS] SERP data saved for keyword: ${keyword}`);
+        // DB에 없으면 새로 스크래핑
+        const serpData = await fetchSerpResults(keyword);
+        if (!serpData) {
+          console.warn(`[WARN] No SERP data returned for keyword: ${keyword}`);
 
-    // 5) 처리 완료 후 메시지 아카이브
-    const { error: archiveError } = await queues.rpc("archive", {
-      queue_name: "serp_scrapping",
-      message_id: message.msg_id,
-    });
+          // 그래도 메시지는 소비했으니 아카이브
+          // const { error: archiveError } = await queues.rpc("archive", {
+          //   queue_name: "serp_scrapping",
+          //   message_id: message.msg_id,
+          // });
 
-    if (archiveError) {
-      console.error(
-        `[ERROR] Failed to archive message with id "${message.msg_id}":`,
-        archiveError,
-      );
-    } else {
-      console.log(`[INFO] Message archived with id: ${message.msg_id}`);
-    }
-  }
+          // if (archiveError) {
+          //   console.error(
+          //     `[ERROR] Failed to archive message with id "${message.msg_id}":`,
+          //     archiveError,
+          //   );
+          // }
+          return;
+        }
+
+        // 결과 저장
+        const saveResult = await saveSerpResults(keywordId, serpData);
+        if (!saveResult.success) {
+          console.error(
+            `[ERROR] Failed to save SERP data for keyword "${keyword}":`,
+            saveResult.error,
+          );
+          // 그래도 메시지는 아카이브
+          const { error: archiveError } = await queues.rpc("archive", {
+            queue_name: "serp_scrapping",
+            message_id: message.msg_id,
+          });
+
+          if (archiveError) {
+            console.error(
+              `[ERROR] Failed to archive message with id "${message.msg_id}":`,
+              archiveError,
+            );
+          }
+          return;
+        }
+
+        console.log(`[SUCCESS] SERP data saved for keyword: ${keyword}`);
+
+        // 메시지 아카이브
+        const { error: archiveError } = await queues.rpc("archive", {
+          queue_name: "serp_scrapping",
+          message_id: message.msg_id,
+        });
+
+        if (archiveError) {
+          console.error(
+            `[ERROR] Failed to archive message with id "${message.msg_id}":`,
+            archiveError,
+          );
+        } else {
+          console.log(`[INFO] Message archived with id: ${message.msg_id}`);
+        }
+      } catch (err) {
+        console.error(`[ERROR] Failed to process message: ${err}`);
+      }
+    }),
+  );
 
   console.log("[INFO] Current batch of messages processed.");
 
-  // 6) "큐에 아직 메시지가 남아 있는지" 체크
-  //    - pgmq 라이브러리/함수마다 다르지만, 예시로 messages_count() 같은 함수를 사용하거나,
-  //      다시 read(n=1, sleep_seconds=0)로 테스트만 해볼 수도 있습니다.
-  //    - 여기서는 단순히 read 한 번 더 시도해 보고, 있으면 self-invoke하는 예시입니다.
+  // 4) 큐에 메시지가 남았는지 체크
   const { data: nextCheck, error: nextCheckError } = await queues.rpc("read", {
     queue_name: "serp_scrapping",
     sleep_seconds: 0,
@@ -116,16 +197,10 @@ export async function GET(request: Request) {
 
   if (nextCheckError) {
     console.warn("[WARN] Checking next messages failed:", nextCheckError);
-    // 에러 시에는 그냥 종료
   } else if (nextCheck && nextCheck.length > 0) {
-    // 메시지가 또 있다면 → self invoke
+    // 메시지가 또 있다면 self-invoke
     console.log("[INFO] More messages remain. Invoking self again...");
 
-    // self-invocation: 같은 URL(현재 request.url)을 GET으로 호출
-    // X-Secret-Key 인증 헤더 포함
-    // (주의: 여기서 await로 대기하면 현재 함수가 끝나기 전에 응답 시간이 길어질 수 있으므로,
-    //  필요에 따라 await를 붙이지 않고 백그라운드로 날릴 수도 있습니다.)
-    // 공통 웹훅 엔드포인트 호출 (비동기)
     fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/process-webhook`, {
       method: "POST",
       headers: {
@@ -134,7 +209,7 @@ export async function GET(request: Request) {
       },
       body: JSON.stringify({
         action: "scrapping-serp-results",
-        payload: {}, // 필요 시 추가 데이터 포함
+        payload: {},
       }),
     })
       .then(() => {
@@ -147,7 +222,6 @@ export async function GET(request: Request) {
     console.log("[INFO] No more messages left in the queue.");
   }
 
-  // 7) 최종 응답
   return new Response(
     JSON.stringify({
       success: true,

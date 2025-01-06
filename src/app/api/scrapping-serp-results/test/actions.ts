@@ -18,21 +18,6 @@ const supabase = createClient(supabaseUrl, supabaseKey, {
   },
 });
 
-// 메시지 내의 message 필드 타입
-export interface MessageContent {
-  id: string;
-  name: string;
-}
-
-// 큐 메시지 타입
-export interface QueueMessage {
-  msg_id: number;
-  read_ct: number;
-  enqueued_at: string; // ISO 8601 datetime string
-  vt: string; // ISO 8601 datetime string
-  message: MessageContent;
-}
-
 interface SmartBlockItem {
   thumbnailImageUrl: string | null;
   siteName: string | null;
@@ -404,10 +389,9 @@ export async function fetchSerpResults(
   console.log(`[ACTION] Fetching SERP results for keyword: ${keyword}`);
 
   const url = `https://search.naver.com/search.naver?query=${
-    encodeURIComponent(
-      keyword,
-    )
+    encodeURIComponent(keyword)
   }`;
+  console.log(`[INFO] Request URL: ${url}`);
 
   try {
     const response = await fetch(url, {
@@ -418,28 +402,46 @@ export async function fetchSerpResults(
       },
     });
 
+    console.log(`[INFO] Response status: ${response.status}`);
+
     if (!response.ok) {
       console.error(`[ERROR] Failed to fetch SERP results: ${response.status}`);
       return null;
     }
 
     const html = await response.text();
+    console.log(`[INFO] Fetched HTML length: ${html.length}`);
+
     const { smartBlocks, popularTopics, basicBlock } = extractSmartBlocks(
       html,
       url,
     );
 
+    console.log(`[INFO] Extracted smart blocks count: ${smartBlocks.length}`);
+    console.log(
+      `[INFO] Extracted popular topics count: ${popularTopics.length}`,
+    );
+    console.log(
+      `[INFO] Extracted basic block items count: ${basicBlock.length}`,
+    );
+
     // Fetch additional data for each SmartBlock's moreButtonLink
     for (const block of smartBlocks) {
+      console.log("[INFO] Processing block:", block);
       if (block.moreButtonRawLink) {
         console.log(
           `[INFO] Fetching additional data for block: ${block.title}`,
         );
+        console.log("[INFO] More button link:", block.moreButtonRawLink);
         if (block.title?.includes("인기글")) {
+          console.log(`[INFO] Skipping block: ${block.title}`);
           continue;
         }
         const additionalItems = await fetchAllDetailSerpData(
           block.moreButtonRawLink ?? "",
+        );
+        console.log(
+          `[INFO] Fetched additional items count: ${additionalItems.length}`,
         );
         block.items.push(...additionalItems); // Append additional items to the block
       }

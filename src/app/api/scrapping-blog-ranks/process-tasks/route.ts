@@ -1,7 +1,7 @@
-import { Message, processKeywordTrackerResult } from "./actions";
+import { processKeywordTrackerResult, QueueMessage } from "./actions";
 import { createClient } from "@supabase/supabase-js";
+import { getTodayInKST, getYesterdayInKST } from "@/utils/date";
 
-// export const runtime = "edge"; // (원한다면 사용)
 export const maxDuration = 3;
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
@@ -11,7 +11,15 @@ if (!supabaseUrl || !supabaseKey) {
   throw new Error("SUPABASE_URL and SUPABASE_SERVICE_ROLE are required.");
 }
 
-// Initialize Supabase client
+const supabase = createClient(supabaseUrl, supabaseKey, {
+  db: { schema: "public" },
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false,
+    detectSessionInUrl: false,
+  },
+});
+
 const queues = createClient(supabaseUrl, supabaseKey, {
   db: { schema: "pgmq_public" },
   auth: {
@@ -21,13 +29,42 @@ const queues = createClient(supabaseUrl, supabaseKey, {
   },
 });
 
-const MESSAGE_LIMIT = 1;
+const MESSAGE_LIMIT = 20;
+
+/**
+ * 오늘 날짜 데이터가 이미 존재하는지 확인하는 함수
+ * @param trackerId - Keyword Tracker ID
+ * @returns {Promise<boolean>} 이미 존재하면 true, 없으면 false
+ */
+async function trackerResultExists(trackerId: string): Promise<boolean> {
+  const today = getYesterdayInKST();
+
+  const { data, error } = await supabase
+    .from("keyword_tracker_results")
+    .select("*")
+    .eq("tracker_id", trackerId)
+    .eq("date", today)
+    .single(); // single()을 사용하여 한 개의 결과만 가져옴
+
+  if (error && error.code !== "PGRST116") {
+    console.error("[INFO] There are no existing data");
+    return false;
+  }
+
+  // data가 있으면 true, 없으면 false 반환
+  return !!data;
+}
+
+async function delay(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 export async function GET(request: Request) {
-  const envServiceRole = process.env.SUPABASE_SERVICE_ROLE;
-  const incomingKey = request.headers.get("X-Secret-Key");
+  await delay(500); // 1초 대기
 
-  // 1) 인증 체크
+  const incomingKey = request.headers.get("X-Secret-Key");
+  const envServiceRole = process.env.SUPABASE_SERVICE_ROLE;
+
   if (!envServiceRole || incomingKey !== envServiceRole) {
     return new Response(
       JSON.stringify({ success: false, error: "Unauthorized request." }),
@@ -42,7 +79,7 @@ export async function GET(request: Request) {
     `[ROUTE] Fetching up to ${MESSAGE_LIMIT} messages from the queue...`,
   );
 
-  // 2) 메시지 읽기
+  // 큐에서 메시지 가져오기
   const { data: messages, error: queueError } = await queues.rpc("read", {
     queue_name: "blog_ranks_scrapping",
     sleep_seconds: 0,
@@ -60,7 +97,6 @@ export async function GET(request: Request) {
     );
   }
 
-  // 3) 메시지 없으면 종료
   if (!messages || messages.length === 0) {
     console.warn("[WARN] No messages found in the queue.");
     return new Response(
@@ -75,91 +111,123 @@ export async function GET(request: Request) {
     );
   }
 
-  console.log(`[INFO] Retrieved ${messages.length} messages from the queue.`);
+  console.log(`[INFO] Processing ${messages.length} messages in parallel...`);
 
-  let successCount = 0;
+  // 병렬로 메시지 처리
+  const results = await Promise.all(
+    messages.map(async (message: QueueMessage) => {
+      const { tracker_id: trackerId } = message.message;
 
-  // 4) 메시지 처리
-  for (const message of messages) {
-    const processedMessage: Message = {
-      tracker_id: message.message.tracker_id,
-      keyword_id: message.message.keyword_id,
-      project_id: message.message.project_id,
-      blog_id: message.message.blog_id,
-    };
+      try {
+        // 오늘 데이터가 이미 존재하는지 확인
+        const alreadyExists = await trackerResultExists(trackerId);
+        if (alreadyExists) {
+          console.log(
+            `[SKIP] Tracker result already exists for tracker_id="${trackerId}". Skipping...`,
+          );
 
-    // 실제 처리 로직
-    const result = await processKeywordTrackerResult(processedMessage);
+          // 메시지 아카이브
+          const { error: archiveError } = await queues.rpc("archive", {
+            queue_name: "blog_ranks_scrapping",
+            message_id: message.msg_id,
+          });
 
-    if (result.success) {
-      successCount++;
+          if (archiveError) {
+            console.error(
+              `[ERROR] Failed to archive message with id "${message.msg_id}":`,
+              archiveError,
+            );
+          } else {
+            console.log(`[INFO] Message archived with id: ${message.msg_id}`);
+          }
 
-      // 처리 성공 → archive
-      const { error: archiveError } = await queues.rpc("archive", {
-        queue_name: "blog_ranks_scrapping",
-        message_id: message.msg_id,
-      });
+          return { success: true };
+        }
 
-      if (archiveError) {
-        console.error(
-          `[ERROR] Failed to archive message with id "${message.msg_id}":`,
-          archiveError,
+        console.log(
+          `[ACTION] Processing tracker result for tracker_id: ${trackerId}`,
         );
-      } else {
-        console.log(`[INFO] Message with id "${message.msg_id}" archived.`);
+
+        // 처리 로직 실행
+        const result = await processKeywordTrackerResult(message.message);
+
+        if (!result.success) {
+          console.error(
+            `[ERROR] Failed to process tracker result for tracker_id="${trackerId}":`,
+            result.error,
+          );
+          return { success: false, error: result.error };
+        }
+
+        console.log(
+          `[SUCCESS] Tracker result processed for tracker_id: ${trackerId}`,
+        );
+
+        // 메시지 아카이브
+        const { error: archiveError } = await queues.rpc("archive", {
+          queue_name: "blog_ranks_scrapping",
+          message_id: message.msg_id,
+        });
+
+        if (archiveError) {
+          console.error(
+            `[ERROR] Failed to archive message with id "${message.msg_id}":`,
+            archiveError,
+          );
+        } else {
+          console.log(`[INFO] Message archived with id: ${message.msg_id}`);
+        }
+
+        return { success: true };
+      } catch (err) {
+        console.error(
+          `[ERROR] Failed to process message for tracker_id="${trackerId}":`,
+          err,
+        );
+        return { success: false, error: err };
       }
-    } else {
-      console.error(`[ERROR] Failed to process message:`, result.error);
-    }
-  }
+    }),
+  );
 
-  console.log(`[INFO] Successfully processed ${successCount} messages.`);
+  const successCount = results.filter((r) => r.success).length;
+  const failureCount = results.length - successCount;
 
-  // 5) 추가 메시지 확인 후 self-invoke
-  try {
-    const { data: nextCheck, error: nextCheckError } = await queues.rpc(
-      "read",
-      {
-        queue_name: "blog_ranks_scrapping",
-        sleep_seconds: 0,
-        n: 1,
-      },
+  console.log(
+    `[INFO] Successfully processed ${successCount} messages. Failed to process ${failureCount} messages.`,
+  );
+
+  // 큐에 메시지가 남았는지 체크
+  const { data: nextCheck, error: nextCheckError } = await queues.rpc("read", {
+    queue_name: "blog_ranks_scrapping",
+    sleep_seconds: 0,
+    n: 1,
+  });
+
+  if (nextCheckError) {
+    console.warn("[WARN] Checking next messages failed:", nextCheckError);
+  } else if (nextCheck && nextCheck.length > 0) {
+    console.log(
+      "[INFO] More messages remain in the queue. Triggering self-invocation...",
     );
 
-    if (nextCheckError) {
-      console.warn("[WARN] Checking next messages failed:", nextCheckError);
-    } else if (nextCheck && nextCheck.length > 0) {
-      // 메시지가 남아있다면 self-invoke
-      console.log(
-        "[INFO] More messages remain in the queue. Triggering self-invocation...",
-      );
-
-      // 현재 라우트(URL)로 다시 GET 요청을 보냄
-      // 헤더에 X-Secret-Key도 포함
-      fetch(request.url, {
-        method: "GET",
-        headers: {
-          "X-Secret-Key": incomingKey ?? "",
-        },
-      })
-        .then(() => {
-          console.log("[INFO] Self invocation triggered successfully.");
-        })
-        .catch((err) => {
-          console.error("[ERROR] Failed to self-invoke:", err);
-        });
-    } else {
-      console.log(
-        "[INFO] No more messages left in the queue after this batch.",
-      );
-    }
-  } catch (err) {
-    console.error("[ERROR] Self-invocation check failed:", err);
+    fetch(request.url, {
+      method: "GET",
+      headers: {
+        "X-Secret-Key": incomingKey ?? "",
+      },
+    })
+      .then(() => console.log("[INFO] Self invocation triggered successfully."))
+      .catch((err) => console.error("[ERROR] Failed to self-invoke:", err));
+  } else {
+    console.log("[INFO] No more messages left in the queue after this batch.");
   }
 
-  // 6) 최종 응답
   return new Response(
-    JSON.stringify({ success: true, processed: successCount }),
+    JSON.stringify({
+      success: true,
+      processed: successCount,
+      failed: failureCount,
+    }),
     {
       status: 200,
       headers: { "Content-Type": "application/json" },

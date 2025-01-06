@@ -1,3 +1,4 @@
+import { getTodayInKST } from "@/utils/date";
 import { createClient } from "@supabase/supabase-js";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
@@ -5,6 +6,21 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE ?? "";
 
 if (!supabaseUrl || !supabaseKey) {
   throw new Error("SUPABASE_URL and SUPABASE_SERVICE_ROLE are required.");
+}
+
+// 메시지 내의 message 필드 타입
+export interface MessageContent {
+  id: string;
+  name: string;
+}
+
+// 큐 메시지 타입
+export interface QueueMessage {
+  msg_id: number;
+  read_ct: number;
+  enqueued_at: string; // ISO 8601 datetime string
+  vt: string; // ISO 8601 datetime string
+  message: MessageContent;
 }
 
 const supabase = createClient(supabaseUrl, supabaseKey, {
@@ -274,7 +290,7 @@ export async function saveKeywordAnalytics(
   console.log(`[ACTION] Saving analytics data for keyword: ${keyword}`);
 
   // Get today's date in ISO format (YYYY-MM-DD)
-  const today = new Date().toISOString().split("T")[0];
+  const today = getTodayInKST();
 
   // Fetch the keyword from the `keywords` table
   const { data: keywordData, error: keywordError } = await supabase
