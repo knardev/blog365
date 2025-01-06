@@ -23,7 +23,7 @@ export async function GET(request: Request) {
 
       if (profiles?.length === 0) {
         // next = "/onboarding/profile";
-        next = "/";
+        next = "/blogs";
         const {} = await supabase
           .from("profiles")
           .insert([
