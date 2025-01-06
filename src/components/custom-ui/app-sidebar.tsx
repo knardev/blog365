@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import { useRecoilValue } from "recoil";
+import { currentProjectAtom } from "@/features/common/atoms/state";
 import { useLoggedInUser } from "@/hooks/use-logged-in-user";
 
 import { fetchProjects } from "@/features/projects/actions/fetch-projects";
@@ -87,6 +89,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const router = useRouter();
   const pathname = usePathname();
 
+  // Recoil에서 현재 선택된 프로젝트
+  const currentProject = useRecoilValue(currentProjectAtom);
+
   const [projects, setProjects] = useState<Project[]>([]);
   const loggedInUser = useLoggedInUser();
 
@@ -117,11 +122,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   }, [loggedInUser, pathname]);
 
   // Determine the current project
-  const currentProject =
-    pathname === "/blogs" || pathname === "/keyword"
-      ? projects[0]
-      : projects.find((project) => pathname.includes(`/${project.slug}`)) ||
-        projects[0];
+  // const currentProject =
+  //   pathname === "/blogs" || pathname === "/keyword"
+  //     ? projects[0]
+  //     : projects.find((project) => pathname.includes(`/${project.slug}`)) ||
+  //       projects[0];
 
   if (!loggedInUser) return null;
   return (
