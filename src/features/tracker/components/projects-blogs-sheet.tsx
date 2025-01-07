@@ -30,14 +30,14 @@ export function ProjectsBlogsSheet({
           블로그 설정
         </Button>
       </SheetTrigger>
-      <SheetContent>
+      <SheetContent className="flex flex-col">
         <SheetHeader>
           <SheetTitle>추적 블로그 설정</SheetTitle>
           <SheetDescription>
             상위노출을 추적할 블로그를 설정하세요.
           </SheetDescription>
         </SheetHeader>
-        <div className="mt-3 space-y-3">
+        <div className="flex-1 mt-3 space-y-3 overflow-y-auto">
           {/* 블로그 목록을 카드 형태로 모두 출력 */}
           <ProjectsBlogsCards
             projectBlogs={blogs}
