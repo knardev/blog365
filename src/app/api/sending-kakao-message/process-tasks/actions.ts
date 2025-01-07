@@ -24,6 +24,21 @@ const SOLAPI_MESSAGE_SERVICE = new SolapiMessageService(
   SOLAPI_API_SECRET,
 );
 
+// 메시지 내의 message 필드 타입
+export interface MessageContent {
+  project_id: string;
+  phone_number: string;
+}
+
+// 큐 메시지 타입
+export interface QueueMessage {
+  msg_id: number;
+  read_ct: number;
+  enqueued_at: string; // ISO 8601 datetime string
+  vt: string; // ISO 8601 datetime string
+  message: MessageContent;
+}
+
 /**
  * sendKakaoMessageAction
  * 1) 프로젝트 정보 가져오기 (slug, name)

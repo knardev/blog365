@@ -20,7 +20,7 @@ const queues = createClient(supabaseUrl, supabaseKey, {
   },
 });
 
-const MESSAGE_LIMIT = 40; // 테스트 목적: 1개씩 처리
+const MESSAGE_LIMIT = 100; // 테스트 목적: 1개씩 처리
 
 // ★ 추가: 오늘 날짜에 이미 존재하는지 체크하는 함수
 async function serpResultExists(keywordId: string): Promise<boolean> {

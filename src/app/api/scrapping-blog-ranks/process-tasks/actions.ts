@@ -106,7 +106,8 @@ export async function processKeywordTrackerResult(message: Message) {
       if (!items || !Array.isArray(items)) continue;
 
       for (const item of items) {
-        if (item.isBlog && item.siteUrl.includes(blogSlug)) {
+        if (item.siteUrl.includes(blogSlug)) {
+          // if (item.isBlog && item.siteUrl.includes(blogSlug)) {
           resultsToInsert.push({
             keyword_tracker: tracker_id,
             date: today,
@@ -128,7 +129,8 @@ export async function processKeywordTrackerResult(message: Message) {
       if (!items || !Array.isArray(items)) continue;
 
       for (const item of items) {
-        if (item.isBlog && item.siteUrl.includes(blogSlug)) {
+        if (item.siteUrl.includes(blogSlug)) {
+          // if (item.isBlog && item.siteUrl.includes(blogSlug)) {
           resultsToInsert.push({
             keyword_tracker: tracker_id,
             date: today,

@@ -1,8 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
-import { sendKakaoMessageAction } from "./actions";
+import { QueueMessage, sendKakaoMessageAction } from "./actions";
 
 // export const runtime = "edge"; // (원한다면 사용)
-export const maxDuration = 3;
+export const maxDuration = 5;
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE ?? "";
@@ -22,7 +22,7 @@ const queues = createClient(supabaseUrl, supabaseKey, {
 });
 
 // 한 번에 처리할 메시지 수
-const MESSAGE_LIMIT = 1;
+const MESSAGE_LIMIT = 10;
 
 export async function GET(request: Request) {
   const incomingKey = request.headers.get("X-Secret-Key");
@@ -64,43 +64,56 @@ export async function GET(request: Request) {
     );
   }
 
-  console.log(`[INFO] Retrieved ${messages.length} message(s). Processing...`);
+  console.log(`[INFO] Processing ${messages.length} messages in parallel...`);
 
-  // 3) 메시지 처리
-  for (const msg of messages) {
-    // 여기서는 메시지 구조를 { project_id, phone_number } 로 가정
-    const { project_id, phone_number } = msg.message;
+  // 3) 병렬로 메시지 처리
+  await Promise.all(
+    messages.map(async (msg: QueueMessage) => {
+      const { project_id, phone_number } = msg.message;
 
-    console.log(
-      `[ACTION] Sending Kakao message for project_id=${project_id}, phone=${phone_number}`,
-    );
+      try {
+        console.log(
+          `[ACTION] Sending Kakao message for project_id=${project_id}, phone=${phone_number}`,
+        );
 
-    // 실제 처리: Solapi API를 사용해 메시지를 보내는 action
-    const actionResult = await sendKakaoMessageAction(project_id, phone_number);
-    if (!actionResult.success) {
-      console.error(
-        "[ERROR] Failed to send Kakao message:",
-        actionResult.error,
-      );
-      // 실패했어도 큐에서 제거하지 않거나(재시도), 혹은 로그만 남길지 결정
-      // 여기서는 일단 로그만 남기고 큐에서 제거(가정).
-    }
+        // 실제 처리: Solapi API를 사용해 메시지를 보내는 action
+        const actionResult = await sendKakaoMessageAction(
+          project_id,
+          phone_number,
+        );
 
-    // 4) 메시지 아카이브 (처리 완료 시 큐에서 제거)
-    const { error: archiveError } = await queues.rpc("archive", {
-      queue_name: "send_kakao_message",
-      message_id: msg.msg_id,
-    });
-    if (archiveError) {
-      console.error("[ERROR] Failed to archive message:", archiveError);
-    } else {
-      console.log(`[INFO] Archived message id=${msg.msg_id}`);
-    }
-  }
+        if (!actionResult.success) {
+          console.error(
+            "[ERROR] Failed to send Kakao message:",
+            actionResult.error,
+          );
+          return;
+        }
+
+        console.log(
+          `[SUCCESS] Kakao message sent for project_id=${project_id}, phone=${phone_number}`,
+        );
+
+        // 4) 메시지 아카이브 (처리 완료 시 큐에서 제거)
+        const { error: archiveError } = await queues.rpc("archive", {
+          queue_name: "send_kakao_message",
+          message_id: msg.msg_id,
+        });
+
+        if (archiveError) {
+          console.error("[ERROR] Failed to archive message:", archiveError);
+        } else {
+          console.log(`[INFO] Archived message id=${msg.msg_id}`);
+        }
+      } catch (err) {
+        console.error(`[ERROR] Failed to process message: ${err}`);
+      }
+    }),
+  );
 
   console.log("[INFO] Current batch of messages processed.");
 
-  // 5) 큐에 메시지가 남았는지 확인
+  // 4) 큐에 메시지가 남았는지 확인
   const { data: nextCheck, error: nextCheckError } = await queues.rpc("read", {
     queue_name: "send_kakao_message",
     sleep_seconds: 0,
@@ -128,7 +141,7 @@ export async function GET(request: Request) {
     console.log("[INFO] No more messages in the queue.");
   }
 
-  // 6) 응답
+  // 5) 응답
   return new Response(
     JSON.stringify({
       success: true,
