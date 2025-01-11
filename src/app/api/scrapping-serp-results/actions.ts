@@ -23,21 +23,6 @@ const supabase = createClient(supabaseUrl, supabaseKey, {
   },
 });
 
-// 메시지 내의 message 필드 타입
-export interface MessageContent {
-  id: string;
-  name: string;
-}
-
-// 큐 메시지 타입
-export interface QueueMessage {
-  msg_id: number;
-  read_ct: number;
-  enqueued_at: string; // ISO 8601 datetime string
-  vt: string; // ISO 8601 datetime string
-  message: MessageContent;
-}
-
 interface SmartBlockItem {
   thumbnailImageUrl: string | null;
   siteName: string | null;

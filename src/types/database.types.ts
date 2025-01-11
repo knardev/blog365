@@ -546,7 +546,7 @@ export type Database = {
       message_status: "ARCHIVED" | "SCHEDULED" | "AVAILABLE"
       message_task_type:
         | "scrapping_blog_visitor"
-        | "scrapping_keywrod_datas"
+        | "scrapping_keyword_datas"
         | "scrapping_serp_results"
         | "scrapping_blog_ranks"
     }

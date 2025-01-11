@@ -8,21 +8,6 @@ if (!supabaseUrl || !supabaseKey) {
   throw new Error("SUPABASE_URL and SUPABASE_SERVICE_ROLE are required.");
 }
 
-// 메시지 내의 message 필드 타입
-export interface MessageContent {
-  id: string;
-  name: string;
-}
-
-// 큐 메시지 타입
-export interface QueueMessage {
-  msg_id: number;
-  read_ct: number;
-  enqueued_at: string; // ISO 8601 datetime string
-  vt: string; // ISO 8601 datetime string
-  message: MessageContent;
-}
-
 const supabase = createClient(supabaseUrl, supabaseKey, {
   db: { schema: "public" },
   auth: {

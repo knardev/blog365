@@ -2,6 +2,8 @@ import { createClient } from "@supabase/supabase-js";
 import { processKeywordData, saveKeywordAnalytics } from "./actions";
 import { getTodayInKST, getYesterdayInKST } from "@/utils/date"; //
 
+export const maxDuration = 60;
+
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE ?? "";
 
@@ -10,8 +12,6 @@ if (!supabaseUrl || !supabaseKey) {
 }
 
 const supabase = createClient(supabaseUrl, supabaseKey);
-
-export const maxDuration = 60;
 
 /**
  * Check if keyword analytics already exist for the given keyword ID and date.
