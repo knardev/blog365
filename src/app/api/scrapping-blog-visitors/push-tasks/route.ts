@@ -2,6 +2,8 @@ import { pushScrappingBlogVisitorTasks } from "./actions";
 
 // export const runtime = "edge"; // Use Edge Runtime if needed
 
+export const maxDuration = 60;
+
 export async function GET(_request: Request) {
   const envServiceRole = process.env.SUPABASE_SERVICE_ROLE;
   if (!envServiceRole) {
