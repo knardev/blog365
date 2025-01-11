@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 
+// 1) Initialize Supabase
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE ?? "";
 
@@ -16,21 +17,21 @@ const supabase = createClient(supabaseUrl, supabaseKey, {
   },
 });
 
-const queues = createClient(supabaseUrl, supabaseKey, {
-  db: { schema: "pgmq_public" },
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false,
-    detectSessionInUrl: false,
-  },
-});
+// 2) Constants
+const PAGE_SIZE = 1000;
 
-const PAGE_SIZE = 1000; // 한 페이지에 가져올 키워드 수
-
+/**
+ * pushKeywordScrapingTasks
+ *
+ * - Fetches all keywords in pages of PAGE_SIZE.
+ * - For each page, inserts each keyword as a row into `public.message_queue`.
+ * - The `task` column is set to "scrapping_keyword_datas".
+ * - The `message` column is a JSON object: { id, name }.
+ */
 export async function pushKeywordScrapingTasks() {
   console.log("[ACTION] Fetching total keyword count...");
 
-  // 1) 키워드 총 개수 가져오기
+  // A) Get the total count of keywords
   const { count, error: countError } = await supabase
     .from("keywords")
     .select("*", { count: "exact", head: true });
@@ -45,72 +46,70 @@ export async function pushKeywordScrapingTasks() {
     return { success: false, error: "No keywords found in the database." };
   }
 
-  console.log(`[INFO] Found ${count} keywords. Preparing to fetch in pages...`);
+  console.log(`[INFO] Found total ${count} keywords.`);
 
-  // 2) 페이지 단위로 키워드 가져오기
-  let totalMessages: number = 0;
-  const totalPages = Math.ceil(count / PAGE_SIZE); // 전체 페이지 수 계산
+  let totalPushed = 0;
+  const totalPages = Math.ceil(count / PAGE_SIZE);
 
-  for (let page = 0; page < totalPages; page++) {
-    console.log(`[INFO] Fetching page ${page + 1} of ${totalPages}...`);
+  // B) Process keywords page by page
+  for (let pageIndex = 0; pageIndex < totalPages; pageIndex++) {
+    const start = pageIndex * PAGE_SIZE;
+    const end = start + PAGE_SIZE - 1;
 
-    // 각 페이지별 키워드 가져오기
+    console.log(
+      `[INFO] Fetching keywords: page=${
+        pageIndex + 1
+      }/${totalPages}, range=[${start}, ${end}]`,
+    );
+
+    // Fetch up to PAGE_SIZE keywords for this page
     const { data: keywords, error: keywordsError } = await supabase
       .from("keywords")
       .select("id, name")
-      .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
+      .range(start, end);
 
     if (keywordsError) {
       console.error(
-        `[ERROR] Failed to fetch keywords for page ${page + 1}:`,
+        `[ERROR] Failed to fetch keywords on page ${pageIndex + 1}:`,
         keywordsError.message,
       );
-      continue; // 에러가 발생한 경우 해당 페이지 건너뜀
+      continue;
     }
 
     if (!keywords || keywords.length === 0) {
-      console.warn(`[WARN] No keywords found for page ${page + 1}.`);
+      console.log(`[INFO] No keywords on page ${pageIndex + 1}. Skipping...`);
       continue;
     }
 
     console.log(
-      `[INFO] Fetched ${keywords.length} keywords for page ${page + 1}.`,
+      `[INFO] Inserting ${keywords.length} tasks into public.message_queue...`,
     );
 
-    // 3) 메시지 생성
-    const messages = keywords.map((keyword) => ({
-      id: keyword.id,
-      name: keyword.name,
+    // Prepare rows for insertion into the message queue
+    const rowsToInsert = keywords.map((keyword) => ({
+      task: "scrapping_keyword_datas", // Set task type
+      message: { id: keyword.id, name: keyword.name }, // JSON payload
     }));
 
-    totalMessages += messages.length;
+    // Insert rows into the `message_queue` table
+    const { error: insertError } = await supabase
+      .from("message_queue")
+      .insert(rowsToInsert);
 
-    console.log(`[INFO] Sending ${messages.length} messages to the queue...`);
-
-    // 4) 큐에 메시지 추가
-    const { error: queueError } = await queues.rpc("send_batch", {
-      queue_name: "keyword_data_scrapping",
-      messages: messages,
-      sleep_seconds: 0,
-    });
-
-    if (queueError) {
+    if (insertError) {
       console.error(
-        `[ERROR] Failed to enqueue messages for page ${page + 1}:`,
-        queueError.message,
+        `[ERROR] Failed to insert queue rows for page ${pageIndex + 1}:`,
+        insertError.message,
       );
-    } else {
-      console.log(
-        `[SUCCESS] Successfully added ${messages.length} tasks to the queue for page ${
-          page + 1
-        }.`,
-      );
+      continue;
     }
+
+    totalPushed += rowsToInsert.length;
+    console.log(
+      `[SUCCESS] Added ${rowsToInsert.length} tasks (page ${pageIndex + 1}).`,
+    );
   }
 
-  console.log(
-    `[INFO] All pages processed. Total messages sent: ${totalMessages}.`,
-  );
-
-  return { success: true, count: totalMessages };
+  console.log(`[RESULT] Total ${totalPushed} tasks added to the queue.`);
+  return { success: true, count: totalPushed };
 }
