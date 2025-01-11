@@ -9,6 +9,8 @@ import { fetchSerpResults, saveSerpResults } from "./actions"; // Adjust import 
  *   "keyword_name": string
  * }
  */
+export const maxDuration = 60;
+
 export async function POST(request: Request) {
   try {
     // 1) Authentication

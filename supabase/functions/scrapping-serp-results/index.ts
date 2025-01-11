@@ -117,7 +117,7 @@ Deno.serve((req: Request) => {
             );
 
             // Step E: Split the ~1,000 keywords from this page into smaller chunks of 10
-            const chunkedKeywords = chunkArray(keywords, 100);
+            const chunkedKeywords = chunkArray(keywords, 10);
 
             // For each chunk of 10, make parallel requests, then move to the next chunk
             for (const [index, chunk] of chunkedKeywords.entries()) {

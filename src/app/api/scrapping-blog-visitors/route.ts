@@ -1,6 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
 import { processBlogVisitorData } from "./actions"; // 기존 사용하던 로직 재활용
 
+export const maxDuration = 60;
+
 export async function POST(request: Request) {
   try {
     // 1) 인증 로직

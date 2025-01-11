@@ -2,6 +2,8 @@
 
 import { processKeywordData, saveKeywordAnalytics } from "./actions";
 
+export const maxDuration = 60;
+
 export async function POST(request: Request) {
   try {
     // 1) Check for the service role key in environment variables
