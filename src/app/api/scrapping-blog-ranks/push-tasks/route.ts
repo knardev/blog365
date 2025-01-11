@@ -2,6 +2,8 @@ import { pushKeywordTrackerTasks } from "./actions";
 
 // export const runtime = "edge"; // Use Edge Runtime for performance
 
+export const maxDuration = 60;
+
 export async function GET(request: Request) {
   const envServiceRole = process.env.SUPABASE_SERVICE_ROLE;
 
