@@ -1,9 +1,9 @@
 import { pushSerpScrapingTasks } from "./actions";
 
-// export const runtime = "edge"; // Use Edge Runtime for performance
+// export const runtime = "edge"; // optional
 
-export async function GET(_request: Request) {
-  const incomingKey = _request.headers.get("X-Secret-Key");
+export async function GET(request: Request) {
+  const incomingKey = request.headers.get("X-Secret-Key");
   const envServiceRole = process.env.SUPABASE_SERVICE_ROLE;
 
   if (!envServiceRole || incomingKey !== envServiceRole) {

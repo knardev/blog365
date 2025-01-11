@@ -311,6 +311,30 @@ export type Database = {
           },
         ]
       }
+      message_queue: {
+        Row: {
+          created_at: string
+          id: number
+          message: Json | null
+          status: Database["public"]["Enums"]["message_status"]
+          task: Database["public"]["Enums"]["message_task_type"] | null
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          message?: Json | null
+          status?: Database["public"]["Enums"]["message_status"]
+          task?: Database["public"]["Enums"]["message_task_type"] | null
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          message?: Json | null
+          status?: Database["public"]["Enums"]["message_status"]
+          task?: Database["public"]["Enums"]["message_task_type"] | null
+        }
+        Relationships: []
+      }
       message_targets: {
         Row: {
           active: boolean
@@ -492,6 +516,24 @@ export type Database = {
           },
         ]
       }
+      sub_keywords: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -501,6 +543,12 @@ export type Database = {
     }
     Enums: {
       keyword_tracker_status: "WAITING" | "PROGRESSING" | "COMPLETED"
+      message_status: "ARCHIVED" | "SCHEDULED" | "AVAILABLE"
+      message_task_type:
+        | "scrapping_blog_visitor"
+        | "scrapping_keywrod_datas"
+        | "scrapping_serp_results"
+        | "scrapping_blog_ranks"
     }
     CompositeTypes: {
       [_ in never]: never

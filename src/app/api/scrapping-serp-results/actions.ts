@@ -515,8 +515,8 @@ export async function saveSerpResults(
 ): Promise<{ success: boolean; error?: string }> {
   console.log(`[ACTION] Saving SERP results for keyword ID: ${keywordId}`);
 
-  // const today = getTodayInKST();
-  const today = getYesterdayInKST();
+  const today = getTodayInKST();
+  // const today = getYesterdayInKST();
 
   // const { data: existingResult, error: existingError } = await supabase
   //   .from("serp_results")

@@ -1,1 +1,1 @@
-// npx supabase gen types typescript --project-id oguzdjlnwsdproeuoywm > src/types/database.types.ts
+// npx supabase gen types typescript --project-id ksvvrhrsmejbqaeazoab > src/types/database.types.ts

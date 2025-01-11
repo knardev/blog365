@@ -1,15 +1,18 @@
 import { createClient } from "@supabase"; // Deno-compatible supabase client
 
 /**
- * A small helper to split an array into chunks of a specified size.
+ * Delay function that returns a Promise resolved after `ms` milliseconds.
  */
-function chunkArray<T>(array: T[], size: number): T[][] {
-  const result: T[][] = [];
-  for (let i = 0; i < array.length; i += size) {
-    result.push(array.slice(i, i + size));
-  }
-  return result;
+function delay(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
+
+/**
+ * We'll allow up to `CONCURRENCY_LIMIT` requests in flight at once.
+ * You can tweak this value to fit your needs.
+ */
+const CONCURRENCY_LIMIT = 20;
+const PAGE_SIZE = 1000; // We fetch up to 1000 items per page from Supabase
 
 Deno.serve((req: Request) => {
   try {
@@ -46,17 +49,18 @@ Deno.serve((req: Request) => {
       },
     });
 
-    // 3) Background task starts here
+    // 3) Background task with pagination + concurrency
     EdgeRuntime.waitUntil(
       (async () => {
         try {
-          console.log("[INFO] Starting SERP scrapping background task...");
+          console.log(
+            "[INFO] Starting concurrency-limited + paginated task...",
+          );
 
-          // Step A: Count the total number of keywords
-          const PAGE_SIZE = 1000;
+          // Step A: Count total rows in "keywords"
           const { count, error: countError } = await supabase
             .from("keywords")
-            .select("*", { count: "exact", head: true });
+            .select("*", { head: true, count: "exact" });
 
           if (countError) {
             console.error("[ERROR] Failed to count keywords:", countError);
@@ -68,8 +72,9 @@ Deno.serve((req: Request) => {
             return;
           }
 
-          console.log(`[INFO] Found total ${count} keywords.`);
+          console.log(`[INFO] Found ${count} keywords total.`);
 
+          // Base URL for making fetch calls
           const baseUrl = Deno.env.get("NEXT_BASE_URL") ?? "";
           if (!baseUrl) {
             console.error("[ERROR] NEXT_BASE_URL not configured.");
@@ -78,119 +83,73 @@ Deno.serve((req: Request) => {
 
           // Step B: Calculate total pages
           const totalPages = Math.ceil(count / PAGE_SIZE);
+          console.log(`[INFO] There will be ${totalPages} pages to process.`);
 
-          // Step C: Loop over pages
-          for (let page = 0; page < totalPages; page++) {
-            const start = page * PAGE_SIZE;
+          // Step C: Process each page in sequence
+          for (let pageIndex = 0; pageIndex < totalPages; pageIndex++) {
+            const start = pageIndex * PAGE_SIZE;
             const end = start + PAGE_SIZE - 1;
 
             console.log(
-              `[INFO] Fetching keywords for page ${
-                page + 1
-              }/${totalPages}, range=[${start},${end}]`,
+              `[INFO] Fetching page ${
+                pageIndex + 1
+              }/${totalPages}, range=[${start}, ${end}]`,
             );
 
-            // Step D: Fetch keywords for the current page
-            const { data: keywords, error: keywordsError } = await supabase
+            // Fetch up to 1000 keywords for this page
+            const { data: keywords, error: pageError } = await supabase
               .from("keywords")
               .select("id, name")
               .range(start, end);
 
-            if (keywordsError) {
-              console.error(
-                `[ERROR] Failed to fetch keywords in page ${page + 1}:`,
-                keywordsError.message,
-              );
-              // Decide whether to continue or break out
-              continue;
+            if (pageError) {
+              console.error("[ERROR] Failed to fetch page:", pageError.message);
+              continue; // skip this page if error
             }
 
             if (!keywords || keywords.length === 0) {
               console.log(
-                `[INFO] Page ${page + 1} has no keywords. Skipping...`,
+                `[INFO] Page ${pageIndex + 1} has no keywords. Skipping...`,
               );
               continue;
             }
 
             console.log(
-              `[INFO] Fetched ${keywords.length} keywords on this page.`,
+              `[INFO] Page ${pageIndex + 1} contains ${keywords.length} items.`,
             );
 
-            // Step E: Split the ~1,000 keywords from this page into smaller chunks of 10
-            const chunkedKeywords = chunkArray(keywords, 10);
-
-            // For each chunk of 10, make parallel requests, then move to the next chunk
-            for (const [index, chunk] of chunkedKeywords.entries()) {
-              console.log(
-                `[INFO] Sending requests for chunk #${
-                  index + 1
-                }, size=${chunk.length}.`,
-              );
-
-              const tasks = chunk.map((keyword) =>
-                fetch(`${baseUrl}/api/scrapping-serp-results`, {
-                  method: "POST",
-                  headers: {
-                    "Content-Type": "application/json",
-                    "X-Secret-Key": envServiceRole,
-                  },
-                  body: JSON.stringify({
-                    keyword_id: keyword.id,
-                    keyword_name: keyword.name,
-                  }),
-                })
-                  .then(async (res) => {
-                    if (!res.ok) {
-                      console.error(
-                        `[ERROR] SERP request failed for keyword "${keyword.name}":`,
-                        await res.text(),
-                      );
-                    } else {
-                      console.log(
-                        `[SUCCESS] SERP request succeeded for keyword "${keyword.name}".`,
-                      );
-                    }
-                  })
-                  .catch((err) => {
-                    console.error(
-                      `[ERROR] SERP request error for keyword "${keyword.name}":`,
-                      err,
-                    );
-                  })
-              );
-
-              // Wait for the current 10-keyword chunk to finish before starting next chunk
-              await Promise.all(tasks);
-            }
+            // Step D: Concurrency-limited processing for this page's keywords
+            await processItemsWithConcurrencyLimit(
+              keywords,
+              baseUrl,
+              envServiceRole,
+            );
 
             console.log(
-              `[INFO] Finished processing page ${page + 1} of ${totalPages}.`,
+              `[INFO] Finished processing page ${
+                pageIndex + 1
+              } of ${totalPages}.`,
             );
           }
 
-          console.log(
-            "[INFO] All pages processed successfully. SERP scrapping completed.",
-          );
+          console.log("[INFO] All pages processed successfully.");
         } catch (err) {
-          console.error(
-            "[ERROR] Exception occurred during SERP scrapping task:",
-            err,
-          );
+          console.error("[ERROR] Exception in concurrency-limited task:", err);
         }
       })(),
     );
 
-    // 4) Immediate response to the client
+    // Return an immediate response
     return new Response(
       JSON.stringify({
         success: true,
         message:
-          "Background SERP scrapping task started. Check logs for progress.",
+          `Started concurrency-limited + paginated process with limit=${CONCURRENCY_LIMIT}.`,
       }),
       { status: 200, headers: { "Content-Type": "application/json" } },
     );
   } catch (err) {
-    console.error("[ERROR] Failed to start SERP scrapping task:", err);
+    console.error("[ERROR] Failed to start task:", err);
     const errorMessage = err instanceof Error ? err.message : "Unknown error";
     return new Response(
       JSON.stringify({ success: false, error: errorMessage }),
@@ -201,3 +160,73 @@ Deno.serve((req: Request) => {
     );
   }
 });
+
+/**
+ * processItemsWithConcurrencyLimit
+ *
+ * Runs up to CONCURRENCY_LIMIT parallel requests for the provided items.
+ * Once done, resolves. If one request is slow, it won't block the rest
+ * from starting as long as a slot is available.
+ */
+async function processItemsWithConcurrencyLimit(
+  items: { id: string; name: string }[],
+  baseUrl: string,
+  envServiceRole: string,
+) {
+  let currentIndex = 0;
+  let inFlight = 0;
+  const total = items.length;
+
+  while (currentIndex < total || inFlight > 0) {
+    // 1) If we have capacity and items left, launch new requests
+    while (inFlight < CONCURRENCY_LIMIT && currentIndex < total) {
+      const { id, name } = items[currentIndex++];
+      inFlight++;
+      console.log(
+        `[DEBUG] inFlight increased to ${inFlight}. (Launching "${name}")`,
+      );
+
+      fetch(`${baseUrl}/api/scrapping-serp-results`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Secret-Key": envServiceRole,
+        },
+        body: JSON.stringify({
+          keyword_id: id,
+          keyword_name: name,
+        }),
+      })
+        .then(async (res) => {
+          if (!res.ok) {
+            console.error(
+              `[ERROR] SERP request failed for keyword "${name}":`,
+              await res.text(),
+            );
+          } else {
+            console.log(
+              `[SUCCESS] SERP request succeeded for keyword "${name}".`,
+            );
+          }
+        })
+        .catch((err) => {
+          console.error(
+            `[ERROR] SERP request error for keyword "${name}":`,
+            err,
+          );
+        })
+        .finally(() => {
+          inFlight--;
+          console.log(
+            `[DEBUG] inFlight decreased to ${inFlight}. (Finished "${name}")`,
+          );
+        });
+    }
+
+    // 2) If we still have items not started, or requests in flight, wait a bit
+    if (currentIndex < total || inFlight > 0) {
+      // Wait 1 second to let some requests finish
+      await delay(500);
+    }
+  }
+}
