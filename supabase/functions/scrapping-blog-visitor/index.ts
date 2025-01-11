@@ -1,84 +1,75 @@
 import { createClient } from "@supabase"; // Deno-compatible supabase client
 
 /**
- * A small helper to split an array into chunks of a specified size.
+ * Delay function that returns a Promise resolved after `ms` milliseconds.
  */
-function chunkArray<T>(array: T[], size: number): T[][] {
-  const result: T[][] = [];
-  for (let i = 0; i < array.length; i += size) {
-    result.push(array.slice(i, i + size));
-  }
-  return result;
+function delay(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
+
+/** Configurable constants */
+const CONCURRENCY_LIMIT = 20;
+const PAGE_SIZE = 1000;
+
+/** Initialize Supabase client once at the top level */
+const SUPABASE_URL = Deno.env.get("EDGE_SUPABASE_URL") ?? "";
+const SUPABASE_SERVICE_ROLE_KEY =
+  Deno.env.get("EDGE_SUPABASE_SERVICE_ROLE_KEY") ?? "";
+
+if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+  console.error("[ERROR] Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY.");
+  throw new Error("Supabase URL or Service Role Key is not configured.");
+}
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+  db: { schema: "public" },
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false,
+    detectSessionInUrl: false,
+  },
+});
 
 Deno.serve((req: Request) => {
   try {
-    // 1) Authentication logic
-    const envServiceRole = Deno.env.get("EDGE_SUPABASE_SERVICE_ROLE_KEY") ?? "";
+    // 1) Authentication
     const incomingKey = req.headers.get("X-Secret-Key") ?? "";
-    if (!envServiceRole || incomingKey !== envServiceRole) {
+    if (
+      !SUPABASE_SERVICE_ROLE_KEY || incomingKey !== SUPABASE_SERVICE_ROLE_KEY
+    ) {
       return new Response(
-        JSON.stringify({
-          success: false,
-          error: "Unauthorized request.",
-        }),
+        JSON.stringify({ success: false, error: "Unauthorized request." }),
         { status: 401, headers: { "Content-Type": "application/json" } },
       );
     }
 
-    // 2) Supabase Client initialization
-    const supabaseUrl = Deno.env.get("EDGE_SUPABASE_URL") ?? "";
-    const supabaseKey = Deno.env.get("EDGE_SUPABASE_SERVICE_ROLE_KEY") ?? "";
-    if (!supabaseUrl || !supabaseKey) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error:
-            "EDGE_SUPABASE_URL and EDGE_SUPABASE_SERVICE_ROLE_KEY are required.",
-        }),
-        { status: 500, headers: { "Content-Type": "application/json" } },
-      );
-    }
-
-    const supabase = createClient(supabaseUrl, supabaseKey, {
-      db: { schema: "public" },
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-        detectSessionInUrl: false,
-      },
-    });
-
-    // Background task: Process pages and chunks sequentially
+    // 2) Background logic
     EdgeRuntime.waitUntil(
       (async () => {
         try {
-          console.log("[INFO] Starting blog scrapping background task...");
+          console.log("[INFO] Starting blog visitor queue-processing task...");
 
-          // A) Count total blogs
-          const PAGE_SIZE = 1000; // Fetch 1000 blogs per page
-          const CHUNK_SIZE = 10; // Process in chunks of 10
-
+          // A) Count total AVAILABLE + scrapping_blog_visitor messages
           const { count, error: countError } = await supabase
-            .from("blogs")
-            .select("*", { head: true, count: "exact" });
+            .from("message_queue")
+            .select("*", { head: true, count: "exact" })
+            .eq("status", "AVAILABLE")
+            .eq("task", "scrapping_blog_visitor");
 
           if (countError) {
-            console.error("[ERROR] Failed to count blogs:", countError);
+            console.error(
+              "[ERROR] Failed to count queue messages:",
+              countError,
+            );
             return;
           }
 
           if (!count || count === 0) {
-            console.warn("[WARN] No blogs found in the database.");
+            console.log("[INFO] No messages found in the queue. Done.");
             return;
           }
 
-          console.log(`[INFO] Found total ${count} blogs.`);
-
-          const totalPages = Math.ceil(count / PAGE_SIZE);
-          console.log(
-            `[INFO] Splitting into ${totalPages} pages (max 1000 per page).`,
-          );
+          console.log(`[INFO] Found ${count} queue messages to process.`);
 
           const baseUrl = Deno.env.get("NEXT_BASE_URL") ?? "";
           if (!baseUrl) {
@@ -86,115 +77,72 @@ Deno.serve((req: Request) => {
             return;
           }
 
-          // B) Process pages sequentially
-          for (let page = 0; page < totalPages; page++) {
-            const start = page * PAGE_SIZE;
+          // B) Calculate total pages
+          const totalPages = Math.ceil(count / PAGE_SIZE);
+          console.log(`[INFO] Splitting into ${totalPages} pages.`);
+
+          // C) Process each page in sequence
+          for (let pageIndex = 0; pageIndex < totalPages; pageIndex++) {
+            const start = pageIndex * PAGE_SIZE;
             const end = start + PAGE_SIZE - 1;
 
             console.log(
-              `[INFO] Fetching blogs for page ${
-                page + 1
+              `[INFO] Fetching messages page ${
+                pageIndex + 1
               }/${totalPages}, range=[${start}, ${end}]`,
             );
 
-            // C) Fetch blogs for the current page
-            const { data: blogs, error: blogsError } = await supabase
-              .from("blogs")
-              .select("id, blog_slug")
+            // Fetch up to PAGE_SIZE messages with status=AVAILABLE, task=scrapping_blog_visitor
+            const { data: messages, error: msgError } = await supabase
+              .from("message_queue")
+              .select("id, message")
+              .eq("status", "AVAILABLE")
+              .eq("task", "scrapping_blog_visitor")
               .range(start, end);
 
-            if (blogsError) {
+            if (msgError) {
               console.error(
-                `[ERROR] Failed to fetch blogs in page ${page + 1}:`,
-                blogsError.message,
+                "[ERROR] Failed to fetch messages:",
+                msgError.message,
               );
               continue;
             }
 
-            if (!blogs || blogs.length === 0) {
-              console.log(`[INFO] Page ${page + 1} has no blogs. Skipping...`);
-              continue;
-            }
-
-            console.log(`[INFO] Fetched ${blogs.length} blogs on this page.`);
-
-            // D) Split the fetched blogs into chunks of CHUNK_SIZE
-            const chunkedBlogs = chunkArray(blogs, CHUNK_SIZE);
-
-            // E) Process each chunk sequentially
-            for (const [idx, chunk] of chunkedBlogs.entries()) {
+            if (!messages || messages.length === 0) {
               console.log(
-                `[INFO] Processing chunk #${
-                  idx + 1
-                } with ${chunk.length} blogs...`,
+                `[INFO] Page ${pageIndex + 1} has no messages. Skipping.`,
               );
-
-              // F) Process tasks in parallel within each chunk
-              const tasks = chunk.map((blog) =>
-                fetch(`${baseUrl}/api/scrapping-blog-visitors`, {
-                  method: "POST",
-                  headers: {
-                    "Content-Type": "application/json",
-                    "X-Secret-Key": envServiceRole,
-                  },
-                  body: JSON.stringify({
-                    id: blog.id,
-                    blog_slug: blog.blog_slug,
-                  }),
-                })
-                  .then(async (res) => {
-                    if (!res.ok) {
-                      console.error(
-                        `[ERROR] blog_slug "${blog.blog_slug}" request failed:`,
-                        await res.text(),
-                      );
-                    } else {
-                      console.log(
-                        `[SUCCESS] blog_slug "${blog.blog_slug}" request succeeded.`,
-                      );
-                    }
-                  })
-                  .catch((err) => {
-                    console.error(
-                      `[ERROR] blog_slug "${blog.blog_slug}" fetch error:`,
-                      err,
-                    );
-                  })
-              );
-
-              // Wait for all tasks in the current chunk to finish
-              await Promise.all(tasks);
-
-              console.log(`[INFO] Chunk #${idx + 1} done. ✔️`);
+              continue;
             }
 
             console.log(
-              `[INFO] Finished processing page ${page + 1}/${totalPages}.`,
+              `[INFO] Page ${pageIndex + 1} has ${messages.length} messages.`,
             );
+
+            // D) Concurrency-limited processing
+            await processQueueMessages(messages, baseUrl);
+
+            console.log(`[INFO] Finished page ${pageIndex + 1}/${totalPages}.`);
           }
 
-          console.log(
-            "[INFO] All pages processed successfully. Blog scrapping completed.",
-          );
+          console.log("[INFO] All queue messages processed successfully.");
         } catch (err) {
-          console.error(
-            "[ERROR] Exception occurred during background task:",
-            err,
-          );
+          console.error("[ERROR] Exception in queue-processing task:", err);
         }
       })(),
     );
 
-    // Immediate response to the client
+    // Immediate response
     return new Response(
       JSON.stringify({
         success: true,
-        message: "Background task started. Blogs are being processed.",
+        message:
+          `Queue-processing started with concurrency limit=${CONCURRENCY_LIMIT}.`,
       }),
       { status: 200, headers: { "Content-Type": "application/json" } },
     );
   } catch (err) {
-    console.error("[ERROR] Failed to start background task:", err);
+    console.error("[ERROR] Failed to start queue-processing:", err);
     const errorMessage = err instanceof Error ? err.message : "Unknown error";
     return new Response(
       JSON.stringify({ success: false, error: errorMessage }),
@@ -205,3 +153,83 @@ Deno.serve((req: Request) => {
     );
   }
 });
+
+/**
+ * processQueueMessages
+ *
+ * Concurrency-limited. For each message:
+ * - Sends a POST request to baseUrl + "/api/scrapping-blog-visitors"
+ * - If successful, updates message status to 'ARCHIVED'
+ */
+async function processQueueMessages(
+  messages: { id: number; message: { id: number; blog_slug: string } }[],
+  baseUrl: string,
+) {
+  let currentIndex = 0;
+  let inFlight = 0;
+  const total = messages.length;
+
+  while (currentIndex < total || inFlight > 0) {
+    // 1) If we have capacity and items left, launch new requests
+    while (inFlight < CONCURRENCY_LIMIT && currentIndex < total) {
+      const msg = messages[currentIndex++];
+      inFlight++;
+      console.log(
+        `[DEBUG] inFlight++ → ${inFlight} (Launching message_id=${msg.id})`,
+      );
+
+      const { id: blogId, blog_slug: blogSlug } = msg.message || {};
+
+      fetch(`${baseUrl}/api/scrapping-blog-visitors`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Secret-Key": SUPABASE_SERVICE_ROLE_KEY,
+        },
+        body: JSON.stringify({
+          id: blogId,
+          blog_slug: blogSlug,
+        }),
+      })
+        .then(async (res) => {
+          if (!res.ok) {
+            console.error(
+              `[ERROR] Request failed for message_id=${msg.id}:`,
+              await res.text(),
+            );
+          } else {
+            console.log(`[SUCCESS] Processed message_id=${msg.id}.`);
+
+            // Update status to ARCHIVED on success
+            const { error: updateErr } = await supabase
+              .from("message_queue")
+              .update({ status: "ARCHIVED" })
+              .eq("id", msg.id);
+
+            if (updateErr) {
+              console.error(
+                `[ERROR] Failed to archive message_id=${msg.id}:`,
+                updateErr.message,
+              );
+            } else {
+              console.log(`[INFO] Archived message_id=${msg.id} successfully.`);
+            }
+          }
+        })
+        .catch((err) => {
+          console.error(`[ERROR] Fetch error for message_id=${msg.id}:`, err);
+        })
+        .finally(() => {
+          inFlight--;
+          console.log(
+            `[DEBUG] inFlight-- → ${inFlight} (Finished message_id=${msg.id})`,
+          );
+        });
+    }
+
+    // 2) If we still have items not started, or requests in flight, wait a bit
+    if (currentIndex < total || inFlight > 0) {
+      await delay(500);
+    }
+  }
+}

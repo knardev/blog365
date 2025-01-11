@@ -1,6 +1,6 @@
 import { pushScrappingBlogVisitorTasks } from "./actions";
 
-// export const runtime = "edge"; // Edge Runtime 설정
+// export const runtime = "edge"; // Use Edge Runtime if needed
 
 export async function GET(_request: Request) {
   const envServiceRole = process.env.SUPABASE_SERVICE_ROLE;
@@ -16,7 +16,6 @@ export async function GET(_request: Request) {
 
   const incomingKey = _request.headers.get("X-Secret-Key");
 
-  // 인증 로직: 요청 헤더와 환경 변수 비교
   if (incomingKey !== envServiceRole) {
     return new Response(
       JSON.stringify({ success: false, error: "Unauthorized request." }),
