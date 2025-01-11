@@ -1,8 +1,39 @@
-// /app/api/scrapping-keyword-datas/route.ts
-
+import { createClient } from "@supabase/supabase-js";
 import { processKeywordData, saveKeywordAnalytics } from "./actions";
+import { getTodayInKST, getYesterdayInKST } from "@/utils/date"; //
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE ?? "";
+
+if (!supabaseUrl || !supabaseKey) {
+  throw new Error("SUPABASE_URL and SUPABASE_SERVICE_ROLE are required.");
+}
+
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 export const maxDuration = 60;
+
+/**
+ * Check if keyword analytics already exist for the given keyword ID and date.
+ */
+async function keywordAnalyticsExists(keywordId: string): Promise<boolean> {
+  const today = getYesterdayInKST();
+  // const today = getTodayInKST();
+
+  const { data, error } = await supabase
+    .from("keyword_analytics")
+    .select("*")
+    .eq("keyword_id", keywordId)
+    .eq("date", today)
+    .single();
+
+  if (error && error.code !== "PGRST116") {
+    console.error("[ERROR] Error checking existing keyword analytics:", error);
+    return false; // Assume no existing result if an unexpected error occurs
+  }
+
+  return !!data; // Return true if data exists, false otherwise
+}
 
 export async function POST(request: Request) {
   try {
@@ -28,9 +59,10 @@ export async function POST(request: Request) {
     }
 
     // 3) Parse the request body for the keyword data
-    const { keyword_id, keyword_name } = await request.json();
+    const { keyword_id: keywordId, keyword_name: keywordName } = await request
+      .json();
 
-    if (!keyword_id || !keyword_name) {
+    if (!keywordId || !keywordName) {
       return new Response(
         JSON.stringify({
           success: false,
@@ -40,12 +72,26 @@ export async function POST(request: Request) {
       );
     }
 
-    console.log(`[INFO] Received keyword: ${keyword_name} (ID: ${keyword_id})`);
+    console.log(`[INFO] Received keyword: ${keywordName} (ID: ${keywordId})`);
 
-    // 4) Process the keyword data (e.g., scrapping, crawling, fetching stats)
-    const keywordData = await processKeywordData(keyword_name);
+    // 4) Check if keyword analytics already exist for the given keyword ID and date
+    const alreadyExists = await keywordAnalyticsExists(keywordId);
+    if (alreadyExists) {
+      console.log(`[SKIP] Keyword analytics already exist for: ${keywordName}`);
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message:
+            `Keyword analytics already exist for "${keywordName}". No new data scrapped.`,
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      );
+    }
+
+    // 5) Process the keyword data (e.g., scrapping, crawling, fetching stats)
+    const keywordData = await processKeywordData(keywordName);
     if (!keywordData) {
-      console.warn(`[WARN] No data returned for keyword: ${keyword_name}`);
+      console.warn(`[WARN] No data returned for keyword: ${keywordName}`);
       return new Response(
         JSON.stringify({
           success: false,
@@ -55,11 +101,11 @@ export async function POST(request: Request) {
       );
     }
 
-    // 5) Save the resulting analytics data
-    const saveResult = await saveKeywordAnalytics(keyword_name, keywordData);
+    // 6) Save the resulting analytics data
+    const saveResult = await saveKeywordAnalytics(keywordName, keywordData);
     if (!saveResult.success) {
       console.error(
-        `[ERROR] Failed to save analytics for "${keyword_name}": ${saveResult.error}`,
+        `[ERROR] Failed to save analytics for "${keywordName}": ${saveResult.error}`,
       );
       return new Response(
         JSON.stringify({ success: false, error: saveResult.error }),
@@ -67,14 +113,14 @@ export async function POST(request: Request) {
       );
     }
 
-    console.log(`[SUCCESS] Keyword analytics saved for: ${keyword_name}`);
+    console.log(`[SUCCESS] Keyword analytics saved for: ${keywordName}`);
 
-    // 6) Return a success response
+    // 7) Return a success response
     return new Response(
       JSON.stringify({
         success: true,
         message:
-          `Keyword data scrapped & saved successfully for "${keyword_name}"`,
+          `Keyword data scrapped & saved successfully for "${keywordName}"`,
       }),
       { status: 200, headers: { "Content-Type": "application/json" } },
     );
