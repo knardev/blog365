@@ -35,8 +35,8 @@ export async function processKeywordTrackerResult({
   projectId: string;
 }) {
   // Because we store daily SERP data by date, pick the day you need:
-  // const today = getTodayInKST();
-  const today = getYesterdayInKST();
+  const today = getTodayInKST();
+  // const today = getYesterdayInKST();
 
   console.log(
     `[ACTION] Processing trackerId="${trackerId}" in project="${projectId}"`,

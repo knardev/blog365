@@ -19,8 +19,8 @@ const supabase = createClient(supabaseUrl, supabaseKey);
  * @returns {Promise<boolean>} 이미 존재하면 true, 없으면 false
  */
 async function trackerResultExists(trackerId: string): Promise<boolean> {
-  const today = getYesterdayInKST();
-  // const today = getTodayInKST();
+  // const today = getYesterdayInKST();
+  const today = getTodayInKST();
 
   const { data, error } = await supabase
     .from("keyword_tracker_results")
