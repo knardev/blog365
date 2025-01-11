@@ -101,7 +101,7 @@ export async function processKeywordTrackerResult({
     const { data: serpResults, error: serpError } = await supabase
       .from("serp_results")
       .select("id, smart_block_datas, basic_block_datas")
-      .eq("keywordId", keywordId)
+      .eq("keyword_id", keywordId)
       .eq("date", today);
 
     if (serpError) {

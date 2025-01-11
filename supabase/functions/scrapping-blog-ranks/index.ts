@@ -8,7 +8,7 @@ function delay(ms: number) {
 }
 
 /** Configurable constants */
-const CONCURRENCY_LIMIT = 20;
+const CONCURRENCY_LIMIT = 100;
 const PAGE_SIZE = 1000;
 
 /** Initialize Supabase client once at the top level */
@@ -185,23 +185,13 @@ async function processQueueMessages(
         `[DEBUG] inFlight++ → ${inFlight} (Launching message_id=${msg.id})`,
       );
 
-      const {
-        tracker_id: trackerId,
-        keyword_id: keywordId,
-        project_id: projectId,
-      } = msg.message || {};
-
       fetch(`${baseUrl}/api/scrapping-blog-ranks`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "X-Secret-Key": SUPABASE_SERVICE_ROLE_KEY,
         },
-        body: JSON.stringify({
-          tracker_id: trackerId,
-          keyword_id: keywordId,
-          project_id: projectId,
-        }),
+        body: JSON.stringify(msg.message),
       })
         .then(async (res) => {
           if (!res.ok) {
