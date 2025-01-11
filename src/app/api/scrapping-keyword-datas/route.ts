@@ -17,8 +17,8 @@ export const maxDuration = 60;
  * Check if keyword analytics already exist for the given keyword ID and date.
  */
 async function keywordAnalyticsExists(keywordId: string): Promise<boolean> {
-  const today = getYesterdayInKST();
-  // const today = getTodayInKST();
+  // const today = getYesterdayInKST();
+  const today = getTodayInKST();
 
   const { data, error } = await supabase
     .from("keyword_analytics")
