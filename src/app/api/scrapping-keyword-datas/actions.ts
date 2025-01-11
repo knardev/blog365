@@ -290,8 +290,8 @@ export async function saveKeywordAnalytics(
   console.log(`[ACTION] Saving analytics data for keyword: ${keyword}`);
 
   // Get today's date in ISO format (YYYY-MM-DD)
-  const today = getYesterdayInKST();
-  // const today = getTodayInKST();
+  // const today = getYesterdayInKST();
+  const today = getTodayInKST();
 
   // Fetch the keyword from the `keywords` table
   const { data: keywordData, error: keywordError } = await supabase
