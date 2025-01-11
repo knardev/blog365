@@ -10,7 +10,7 @@ export const defineFetchProjectQuery = async (profileId: string) => {
   const query = createClient()
     .from("projects")
     .select("*")
-    .eq("owner_profile_id", profileId)
+    .eq("owner_profile_id", profileId);
 
   return query;
 };

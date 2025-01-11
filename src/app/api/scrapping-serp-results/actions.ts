@@ -1,6 +1,11 @@
-import { getTodayInKST, getYesterdayInKST } from "@/utils/date";
 import { createClient } from "@supabase/supabase-js";
+import { ZenRows } from "zenrows"; // ZenRows 추가
 import * as cheerio from "cheerio";
+import { getTodayInKST, getYesterdayInKST } from "@/utils/date";
+
+// ZenRows API Key (환경 변수로 관리 권장)
+const ZENROWS_API_KEY = process.env.ZENROW_API_KEY ?? "";
+const zenrowsClient = new ZenRows(ZENROWS_API_KEY);
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE ?? "";
@@ -17,6 +22,21 @@ const supabase = createClient(supabaseUrl, supabaseKey, {
     detectSessionInUrl: false,
   },
 });
+
+// 메시지 내의 message 필드 타입
+export interface MessageContent {
+  id: string;
+  name: string;
+}
+
+// 큐 메시지 타입
+export interface QueueMessage {
+  msg_id: number;
+  read_ct: number;
+  enqueued_at: string; // ISO 8601 datetime string
+  vt: string; // ISO 8601 datetime string
+  message: MessageContent;
+}
 
 interface SmartBlockItem {
   thumbnailImageUrl: string | null;
@@ -48,6 +68,111 @@ interface SerpData {
   smartBlocks: SmartBlock[];
   popularTopics: PopularTopicItem[];
   basicBlock: SmartBlockItem[];
+}
+
+/**
+ * ZenRows를 사용하여 URL의 HTML 데이터를 가져옴
+ * @param url - 요청할 URL
+ * @returns HTML 문자열 또는 null
+ */
+async function fetchHtmlWithZenRows(url: string): Promise<string | null> {
+  console.log(`[FETCH] Fetching data from URL via ZenRows: ${url}`);
+  try {
+    const response = await zenrowsClient.get(url);
+    if (!response.ok) {
+      console.error(`[ERROR] Failed to fetch data: ${response.status}`);
+      return null;
+    }
+    return await response.text();
+  } catch (error) {
+    console.error(`[ERROR] ZenRows request failed: ${error}`);
+    return null;
+  }
+}
+
+/**
+ * Fetch SERP results for a given keyword and process additional data from `moreButtonLink`.
+ * @param keyword - The search keyword.
+ * @returns {Promise<SerpData | null>} Parsed SERP data or null if an error occurs.
+ */
+export async function fetchSerpResults(
+  keyword: string,
+): Promise<SerpData | null> {
+  console.log(`[ACTION] Fetching SERP results for keyword: ${keyword}`);
+
+  const url = `https://search.naver.com/search.naver?query=${
+    encodeURIComponent(keyword)
+  }`;
+
+  const html = await fetchHtmlWithZenRows(url);
+  if (!html) {
+    console.error("[ERROR] Failed to fetch or process SERP results.");
+    return null;
+  }
+
+  const { smartBlocks, popularTopics, basicBlock } = extractSmartBlocks(
+    html,
+    url,
+  );
+
+  // Fetch additional data for each SmartBlock's moreButtonLink
+  for (const block of smartBlocks) {
+    if (block.moreButtonRawLink) {
+      console.log(`[INFO] Fetching additional data for block: ${block.title}`);
+      if (block.title?.includes("인기글")) continue;
+
+      const additionalHtml = await fetchHtmlWithZenRows(
+        block.moreButtonRawLink,
+      );
+      if (additionalHtml) {
+        const $ = cheerio.load(additionalHtml);
+        const additionalItems: SmartBlockItem[] = [];
+        $("div.fds-ugc-block-mod").each((index, itemElement) => {
+          const thumbnailImageUrl =
+            $(itemElement).find(".fds-thumb-small img").attr("src") || null;
+          const siteName =
+            $(itemElement).find(".fds-info-inner-text span").text() || null;
+          const siteUrl =
+            $(itemElement).find(".fds-info-inner-text").attr("href") || null;
+          const isBlog = siteUrl?.includes("blog") ?? false;
+          const issueDate =
+            $(itemElement).find(".fds-info-sub-inner-text").text() || null;
+          const postTitle = $(itemElement)
+            .find(".fds-comps-right-image-text-title span")
+            .text() || null;
+          const postUrl = $(itemElement)
+            .find(".fds-comps-right-image-text-title")
+            .attr("href") || null;
+          const postContent = $(itemElement)
+            .find(".fds-comps-right-image-text-content span")
+            .text() || null;
+          const postImageCountText = $(itemElement)
+            .find(".fds-comps-right-image-content-image-badge span")
+            .text();
+          const postImageCount = postImageCountText
+            ? parseInt(postImageCountText, 10)
+            : null;
+          const rank = index + 1;
+
+          additionalItems.push({
+            thumbnailImageUrl,
+            siteName,
+            siteUrl,
+            isBlog,
+            issueDate,
+            postTitle,
+            postUrl,
+            postContent,
+            postImageCount,
+            rank,
+          });
+        });
+        block.items.push(...additionalItems);
+      }
+    }
+  }
+
+  return { smartBlocks, popularTopics, basicBlock };
 }
 
 /**
@@ -379,88 +504,6 @@ function extractSmartBlocks(
 }
 
 /**
- * Fetch SERP results for a given keyword and process additional data from `moreButtonLink`.
- * @param keyword - The search keyword.
- * @returns {Promise<SerpData | null>} Parsed SERP data or null if an error occurs.
- */
-export async function fetchSerpResults(
-  keyword: string,
-): Promise<SerpData | null> {
-  console.log(`[ACTION] Fetching SERP results for keyword: ${keyword}`);
-
-  const url = `https://search.naver.com/search.naver?query=${
-    encodeURIComponent(keyword)
-  }`;
-  console.log(`[INFO] Request URL: ${url}`);
-
-  try {
-    const response = await fetch(url, {
-      method: "GET",
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.212 Safari/537.36",
-      },
-    });
-
-    console.log(`[INFO] Response status: ${response.status}`);
-
-    if (!response.ok) {
-      console.error(`[ERROR] Failed to fetch SERP results: ${response.status}`);
-      return null;
-    }
-
-    const html = await response.text();
-    console.log(`[INFO] Fetched HTML length: ${html.length}`);
-
-    const { smartBlocks, popularTopics, basicBlock } = extractSmartBlocks(
-      html,
-      url,
-    );
-
-    console.log(`[INFO] Extracted smart blocks count: ${smartBlocks.length}`);
-    console.log(
-      `[INFO] Extracted popular topics count: ${popularTopics.length}`,
-    );
-    console.log(
-      `[INFO] Extracted basic block items count: ${basicBlock.length}`,
-    );
-
-    // Fetch additional data for each SmartBlock's moreButtonLink
-    for (const block of smartBlocks) {
-      console.log("[INFO] Processing block:", block);
-      if (block.moreButtonRawLink) {
-        console.log(
-          `[INFO] Fetching additional data for block: ${block.title}`,
-        );
-        console.log("[INFO] More button link:", block.moreButtonRawLink);
-        if (block.title?.includes("인기글")) {
-          console.log(`[INFO] Skipping block: ${block.title}`);
-          continue;
-        }
-        const additionalItems = await fetchAllDetailSerpData(
-          block.moreButtonRawLink ?? "",
-        );
-        console.log(
-          `[INFO] Fetched additional items count: ${additionalItems.length}`,
-        );
-        block.items.push(...additionalItems); // Append additional items to the block
-      }
-    }
-
-    return {
-      smartBlocks,
-      popularTopics,
-      basicBlock,
-    };
-  } catch (error) {
-    console.error(
-      `[ERROR] Failed to process SERP results: ${(error as Error).message}`,
-    );
-    return null;
-  }
-}
-
-/**
  * Save SERP results to the database.
  * @param keywordId - The ID of the keyword in the database.
  * @param serpData - The SERP data to save.
@@ -472,8 +515,8 @@ export async function saveSerpResults(
 ): Promise<{ success: boolean; error?: string }> {
   console.log(`[ACTION] Saving SERP results for keyword ID: ${keywordId}`);
 
-  const today = getTodayInKST();
-  // const today = getYesterdayInKST();
+  // const today = getTodayInKST();
+  const today = getYesterdayInKST();
 
   // const { data: existingResult, error: existingError } = await supabase
   //   .from("serp_results")

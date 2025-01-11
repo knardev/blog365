@@ -43,7 +43,7 @@ export async function GET(request: Request) {
   }
 
   console.log(
-    `[ROUTE] Fetching up to ${MESSAGE_LIMIT} messages from the queue...`,
+    "[ROUTE] Fetching up to ${MESSAGE_LIMIT} messages from the queue...",
   );
 
   // 1) Fetch messages from the queue
@@ -72,7 +72,7 @@ export async function GET(request: Request) {
     );
   }
 
-  console.log(`[INFO] Retrieved ${messages.length} messages from the queue.`);
+  console.log("[INFO] Retrieved ${messages.length} messages from the queue.");
 
   // 2) Process messages in parallel using Promise.all
   const results = await Promise.all(
@@ -82,7 +82,7 @@ export async function GET(request: Request) {
 
       try {
         console.log(
-          `[INFO] Processing message with blog_slug "${blog_slug}"...`,
+          '[INFO] Processing message with blog_slug "${blog_slug}"...',
         );
 
         const result = await processBlogVisitorData(
@@ -93,13 +93,13 @@ export async function GET(request: Request) {
 
         if (!result.success) {
           console.error(
-            `[ERROR] Failed to process message with blog_slug "${blog_slug}": ${result.error}`,
+            '[ERROR] Failed to process message with blog_slug "${blog_slug}": ${result.error}',
           );
           return false;
         }
 
         console.log(
-          `[SUCCESS] Message with blog_slug "${blog_slug}" processed successfully.`,
+          '[SUCCESS] Message with blog_slug "${blog_slug}" processed successfully.',
         );
 
         // Archive the processed message
@@ -110,19 +110,19 @@ export async function GET(request: Request) {
 
         if (archiveError) {
           console.error(
-            `[ERROR] Failed to archive message with id "${message.msg_id}":`,
+            '[ERROR] Failed to archive message with id "${message.msg_id}":',
             archiveError,
           );
         } else {
           console.log(
-            `[INFO] Message with id "${message.msg_id}" archived from the queue.`,
+            '[INFO] Message with id "${message.msg_id}" archived from the queue.',
           );
         }
 
         return true;
       } catch (err) {
         console.error(
-          `[ERROR] Failed to process message with blog_slug "${blog_slug}":`,
+          '[ERROR] Failed to process message with blog_slug "${blog_slug}":',
           err,
         );
         return false;
@@ -132,7 +132,7 @@ export async function GET(request: Request) {
 
   const successCount = results.filter((res) => res).length;
   console.log(
-    `[INFO] Successfully processed ${successCount}/${messages.length} messages.`,
+    "[INFO] Successfully processed ${successCount}/${messages.length} messages.",
   );
 
   // 3) Check for more messages and self-invoke if needed
@@ -174,7 +174,7 @@ export async function GET(request: Request) {
     JSON.stringify({
       success: true,
       message:
-        `Process Queue Messages completed. Successfully processed ${successCount}/${messages.length} messages.`,
+        "Process Queue Messages completed. Successfully processed ${successCount}/${messages.length} messages.",
     }),
     { status: 200, headers: { "Content-Type": "application/json" } },
   );

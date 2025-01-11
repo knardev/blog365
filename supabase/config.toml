@@ -242,7 +242,7 @@ enabled = false
 enabled = true
 # Configure one of the supported request policies: `oneshot`, `per_worker`.
 # Use `oneshot` for hot reload, or `per_worker` for load testing.
-policy = "oneshot"
+policy = "per_worker"
 # Port to attach the Chrome inspector for debugging edge functions.
 inspector_port = 8083
 
@@ -254,13 +254,17 @@ inspector_port = 8083
 # Uncomment to specify a custom file path to the entrypoint.
 # Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
 # entrypoint = "./functions/MY_FUNCTION_NAME/index.ts"
-[functions.push-scrapping-blog-visitor-tasks]
-verify_jwt = true
-import_map = './functions/import_map.json'
+[functions.scrapping-blog-visitor]
+verify_jwt = false
+import_map = "./functions/scrapping-blog-visitor/deno.jsonc"
 
-[functions.process-scrapping-blog-visitor-task]
-verify_jwt = true
-import_map = './functions/import_map.json'
+[functions.scrapping-keyword-datas]
+verify_jwt = false
+import_map = "./functions/scrapping-keyword-datas/deno.jsonc"
+
+[functions.scrapping-serp-results]
+verify_jwt = false
+import_map = "./functions/scrapping-serp-results/deno.jsonc"
 
 [analytics]
 enabled = true
