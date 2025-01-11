@@ -25,7 +25,7 @@ const PAGE_SIZE = 1000; // Number of keyword trackers to fetch per page
  * - Fetches all active keyword trackers in pages of PAGE_SIZE.
  * - For each page, inserts rows into `public.message_queue` with:
  *   - task = "scrapping_blog_ranks"
- *   - message = JSON containing { tracker_id, keyword_id, project_id, blog_id }
+ *   - message = JSON containing { tracker_id, keyword_id, project_id } (no blog_id)
  */
 export async function pushKeywordTrackerTasks() {
   console.log("[ACTION] Fetching total count of active keyword trackers...");
@@ -81,8 +81,15 @@ export async function pushKeywordTrackerTasks() {
 
     console.log(`[INFO] Fetched ${trackers.length} keyword trackers.`);
 
-    // C) Generate messages for the queue
-    const messages = await generateQueueMessages(trackers);
+    // C) Generate messages for the queue (no blog_id here)
+    const messages = trackers.map((tracker) => ({
+      task: "scrapping_blog_ranks",
+      message: {
+        tracker_id: tracker.id,
+        keyword_id: tracker.keyword_id,
+        project_id: tracker.project_id,
+      },
+    }));
 
     if (messages.length === 0) {
       console.warn(`[WARN] No messages generated for page ${pageIndex + 1}.`);
@@ -116,82 +123,4 @@ export async function pushKeywordTrackerTasks() {
 
   console.log(`[RESULT] Total ${totalPushed} messages added to the queue.`);
   return { success: true, count: totalPushed };
-}
-
-/**
- * Generates queue messages for each keyword tracker by fetching associated blogs.
- * @param trackers Array of keyword trackers
- * @returns Array of message objects to be inserted into the queue
- */
-async function generateQueueMessages(
-  trackers: { id: string; keyword_id: string; project_id: string }[],
-): Promise<
-  {
-    task: string;
-    message: {
-      tracker_id: string;
-      keyword_id: string;
-      project_id: string;
-      blog_id: string;
-    };
-  }[]
-> {
-  const messages: {
-    task: string;
-    message: {
-      tracker_id: string;
-      keyword_id: string;
-      project_id: string;
-      blog_id: string;
-    };
-  }[] = [];
-
-  for (const tracker of trackers) {
-    if (!tracker.project_id) {
-      console.warn(
-        `[WARN] Tracker ${tracker.id} has no project_id. Skipping...`,
-      );
-      continue;
-    }
-
-    const { data: blogs, error: blogsError } = await supabase
-      .from("projects_blogs")
-      .select("blog_id")
-      .eq("project_id", tracker.project_id)
-      .eq("active", true);
-
-    if (blogsError) {
-      console.error(
-        `[ERROR] Failed to fetch blogs for project ${tracker.project_id}:`,
-        blogsError.message,
-      );
-      continue;
-    }
-
-    if (!blogs || blogs.length === 0) {
-      console.warn(
-        `[WARN] No active blogs found for project ${tracker.project_id}.`,
-      );
-      continue;
-    }
-
-    console.log(
-      `[INFO] Found ${blogs.length} active blogs for project ${tracker.project_id}.`,
-    );
-
-    // Create a message for each blog
-    blogs.forEach((blog) => {
-      messages.push({
-        task: "scrapping_blog_ranks",
-        message: {
-          tracker_id: tracker.id,
-          keyword_id: tracker.keyword_id,
-          project_id: tracker.project_id,
-          blog_id: blog.blog_id,
-        },
-      });
-    });
-  }
-
-  return messages;
 }

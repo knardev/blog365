@@ -168,7 +168,6 @@ async function processQueueMessages(
       tracker_id: string;
       keyword_id: string;
       project_id: string;
-      blog_id: string;
     };
   }[],
   baseUrl: string,
@@ -190,7 +189,6 @@ async function processQueueMessages(
         tracker_id: trackerId,
         keyword_id: keywordId,
         project_id: projectId,
-        blog_id: blogId,
       } = msg.message || {};
 
       fetch(`${baseUrl}/api/scrapping-blog-ranks`, {
@@ -203,7 +201,6 @@ async function processQueueMessages(
           tracker_id: trackerId,
           keyword_id: keywordId,
           project_id: projectId,
-          blog_id: blogId,
         }),
       })
         .then(async (res) => {

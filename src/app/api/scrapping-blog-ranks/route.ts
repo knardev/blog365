@@ -56,16 +56,15 @@ export async function POST(request: Request) {
     tracker_id: trackerId,
     keyword_id: keywordId,
     project_id: projectId,
-    blog_id: blogId,
   } = await request
     .json();
 
-  if (!trackerId || !keywordId || !projectId || !blogId) {
+  if (!trackerId || !keywordId || !projectId) {
     return new Response(
       JSON.stringify({
         success: false,
         error:
-          "Invalid request body. 'tracker_id', 'keyword_id', 'project_id', and 'blog_id' are required.",
+          "Invalid request body. 'tracker_id', 'keyword_id', 'project_id' are required.",
       }),
       { status: 400, headers: { "Content-Type": "application/json" } },
     );
@@ -93,7 +92,7 @@ export async function POST(request: Request) {
     const result = await processKeywordTrackerResult({
       trackerId,
       keywordId,
-      blogId,
+      projectId,
     });
     if (!result.success) {
       console.error(
