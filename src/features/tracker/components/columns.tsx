@@ -71,7 +71,11 @@ export function generateColumns(
       cell: ({ row }) => {
         const tracker = row.original;
         if (readonly) {
-          return <div>{tracker.keyword_categories?.name}</div>;
+          return (
+            <div className="text-center">
+              {tracker.keyword_categories?.name}
+            </div>
+          );
         }
         return (
           <CategorySelector
