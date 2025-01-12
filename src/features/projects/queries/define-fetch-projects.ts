@@ -10,7 +10,9 @@ export const defineFetchProjectQuery = async (profileId: string) => {
   const query = createClient()
     .from("projects")
     .select("*")
-    .eq("owner_profile_id", profileId);
+    .eq("owner_profile_id", profileId)
+    .eq("delete_state", false)
+    .order("created_at", { ascending: true });
 
   return query;
 };

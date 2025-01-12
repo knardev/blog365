@@ -2,10 +2,12 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { useRecoilValue } from "recoil";
-import { currentProjectAtom } from "@/features/common/atoms/state";
+import { useRecoilState } from "recoil"; // 변경
+import {
+  projectsAtom,
+  currentProjectAtom,
+} from "@/features/projects/atoms/state";
 import { useLoggedInUser } from "@/hooks/use-logged-in-user";
-
 import { fetchProjects } from "@/features/projects/actions/fetch-projects";
 import {
   Rss,
@@ -19,7 +21,7 @@ import {
   Settings,
 } from "lucide-react";
 import { NavUser } from "./nav-user";
-import { ProjectSwitcher } from "./project-switcher";
+import { ProjectSwitcher } from "../../features/projects/components/project-switcher";
 import {
   Sidebar,
   SidebarContent,
@@ -34,6 +36,7 @@ import {
   SidebarFooter,
 } from "@/components/ui/sidebar";
 import { ModeToggle } from "@/components/custom-ui/mode-toggle";
+import type { ProjectMenu } from "@/features/projects/types/types";
 
 const data = {
   projectSetting: [
@@ -77,65 +80,43 @@ const data = {
   ],
 };
 
-export type Project = {
-  name: string;
-  logo: React.ElementType;
-  url: string;
-  isActive: boolean;
-  slug: string;
-};
-
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const router = useRouter();
   const pathname = usePathname();
 
   // Recoil에서 현재 선택된 프로젝트
-  const currentProject = useRecoilValue(currentProjectAtom);
+  const [projects, setProjects] = useRecoilState(projectsAtom); // Recoil에서 global projects state
+  const [currentProject] = useRecoilState(currentProjectAtom);
 
-  const [projects, setProjects] = useState<Project[]>([]);
   const loggedInUser = useLoggedInUser();
 
   useEffect(() => {
-    const _fetchProjects = async () => {
-      if (!loggedInUser) return;
+    if (!loggedInUser) return;
+
+    (async () => {
+      console.log("fetching projects");
       const _projects = await fetchProjects(loggedInUser.profile.id);
-      setProjects(
-        _projects.map((project) => {
-          const basePath = pathname.split("/").slice(1).join("/");
-
-          const newPath =
-            basePath === "blogs" || basePath === "keyword"
-              ? `/${project.slug}/tracker`
-              : `/${project.slug}/${basePath.split("/").slice(1).join("/")}`;
-
-          return {
-            name: project.name,
-            logo: Frame,
-            url: newPath,
-            slug: project.slug,
-            isActive: pathname.includes(project.slug),
-          };
-        })
-      );
-    };
-    _fetchProjects();
-  }, [loggedInUser, pathname]);
-
-  // Determine the current project
-  // const currentProject =
-  //   pathname === "/blogs" || pathname === "/keyword"
-  //     ? projects[0]
-  //     : projects.find((project) => pathname.includes(`/${project.slug}`)) ||
-  //       projects[0];
+      const mapped = _projects.map((project) => {
+        // ...url 구성 로직
+        // (단, 낙관적 업데이트 시 이 로직을 재실행하기보다는 아톰에서 URL 업데이트를 할 수도 있음)
+        return {
+          id: project.id,
+          name: project.name,
+          logo: Frame,
+          slug: project.slug,
+          url: `/${project.slug}/tracker`,
+          isActive: pathname.includes(project.slug),
+        } as ProjectMenu;
+      });
+      setProjects(mapped); // Recoil 아톰에 저장
+    })();
+  }, [loggedInUser, pathname, setProjects]);
 
   if (!loggedInUser) return null;
   return (
     <Sidebar variant="inset" collapsible="icon" {...props}>
       <SidebarHeader>
-        <ProjectSwitcher
-          projects={projects}
-          profileId={loggedInUser.profile.id}
-        />
+        <ProjectSwitcher profileId={loggedInUser.profile.id} />
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>

@@ -11,7 +11,7 @@ import { createClient } from "@/utils/supabase/server";
 export const defineAddProjectQuery = (
   profileId: string,
   projectName: string,
-  projectSlug: string
+  projectSlug: string,
 ) => {
   return createClient()
     .from("projects")
@@ -20,13 +20,10 @@ export const defineAddProjectQuery = (
       name: projectName,
       slug: projectSlug,
     })
-    .select();
+    .select()
+    .single();
 };
 
 export type AddProject = QueryData<
   ReturnType<typeof defineAddProjectQuery>
 >;
-
-// Example Usage:
-// const result = await defineAddProjectQuery("profile-id", "My Project", "my-project");
-// console.log(result);

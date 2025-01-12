@@ -2,6 +2,8 @@ import { createClient } from "@supabase/supabase-js";
 import { fetchSerpResults, saveSerpResults } from "./actions";
 import { getTodayInKST, getYesterdayInKST } from "@/utils/date";
 
+export const maxDuration = 60;
+
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE ?? "";
 
@@ -42,7 +44,6 @@ async function serpResultExists(keywordId: string): Promise<boolean> {
  *   "keyword_name": string
  * }
  */
-export const maxDuration = 60;
 
 export async function POST(request: Request) {
   try {

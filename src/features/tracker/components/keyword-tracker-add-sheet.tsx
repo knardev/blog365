@@ -115,7 +115,7 @@ export function KeywordTrackerAddSheet({
             <Label htmlFor="keywords">키워드들</Label>
             <Textarea
               id="keywords"
-              placeholder="예: 미금역치과, 강남역치과, 서초치과"
+              placeholder="엔터로 구분해서 넣어주세요."
               value={keywords}
               rows={3}
               onChange={(e) => setKeywords(e.target.value)}

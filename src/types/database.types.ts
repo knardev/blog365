@@ -45,6 +45,7 @@ export type Database = {
         Row: {
           blog_slug: string
           created_at: string
+          delete_state: boolean
           id: string
           is_influencer: boolean | null
           name: string | null
@@ -53,6 +54,7 @@ export type Database = {
         Insert: {
           blog_slug: string
           created_at?: string
+          delete_state?: boolean
           id?: string
           is_influencer?: boolean | null
           name?: string | null
@@ -61,6 +63,7 @@ export type Database = {
         Update: {
           blog_slug?: string
           created_at?: string
+          delete_state?: boolean
           id?: string
           is_influencer?: boolean | null
           name?: string | null
@@ -404,6 +407,7 @@ export type Database = {
       projects: {
         Row: {
           created_at: string
+          delete_state: boolean
           id: string
           name: string
           owner_profile_id: string | null
@@ -411,6 +415,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          delete_state?: boolean
           id?: string
           name: string
           owner_profile_id?: string | null
@@ -418,6 +423,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          delete_state?: boolean
           id?: string
           name?: string
           owner_profile_id?: string | null
