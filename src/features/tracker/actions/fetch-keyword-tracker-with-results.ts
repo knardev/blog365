@@ -22,6 +22,7 @@ import { cache } from "react";
  * @param startDate - optional start date
  * @param endDate - optional end date
  * @param strictMode - if true, more strict criteria for 'catch_success'
+ * @param serviceRole - if true, use service role client
  * @returns KeywordTrackerWithResultsResponse or null
  */
 export const fetchKeywordTrackerWithResults = cache(async (
@@ -29,8 +30,12 @@ export const fetchKeywordTrackerWithResults = cache(async (
   startDate?: string,
   endDate?: string,
   strictMode = false, // 기본값: false
+  serviceRole = false, // 기본값: false
 ): Promise<KeywordTrackerWithResultsResponse | null> => {
-  const { data: projectData, error: projectError } = await createClient()
+  // Create Supabase client (use service role if specified)
+  const supabase = createClient(serviceRole);
+
+  const { data: projectData, error: projectError } = await supabase
     .from("projects")
     .select("id")
     .eq("slug", projectSlug)
@@ -46,6 +51,7 @@ export const fetchKeywordTrackerWithResults = cache(async (
   // 1) 키워드 트래커 목록 가져오기
   const trackerQuery = await defineFetchKeywordTrackerWithCategoriesQuery(
     projectId,
+    serviceRole,
   );
   const { data: trackersData, error: trackersError } = trackerQuery;
 
@@ -69,7 +75,10 @@ export const fetchKeywordTrackerWithResults = cache(async (
     const keywordId = tracker.keywords?.id;
     let latestAnalytics = null;
     if (keywordId) {
-      const analyticsQuery = await defineFetchKeywordAnalyticsQuery(keywordId);
+      const analyticsQuery = await defineFetchKeywordAnalyticsQuery(
+        keywordId,
+        serviceRole,
+      );
       const { data: analyticsArray, error: analyticsError } = analyticsQuery;
       if (analyticsError) {
         console.error("Error fetching analytics:", analyticsError);
@@ -82,6 +91,7 @@ export const fetchKeywordTrackerWithResults = cache(async (
       tracker.id,
       startDate,
       endDate,
+      serviceRole,
     );
     const { data: resultsArray, error: resultsError } = resultsQuery;
     if (resultsError) {
@@ -122,12 +132,10 @@ export const fetchKeywordTrackerWithResults = cache(async (
   const yesterday = formatInTimeZone(yesterdayDate, KST, "yyyy-MM-dd");
 
   // 어제 기준 7일 전 날짜
-  const weekAgoDate = subDays(today, 7);
+  const weekAgoDate = subDays(now, 7);
   const weekAgo = formatInTimeZone(weekAgoDate, KST, "yyyy-MM-dd");
 
   // strictMode에 따라 인기글/일반글의 최대 rank 결정
-  // strictMode: 인기글 = 3위 이하, 일반글 = 2위 이하
-  // !strictMode: 인기글 = 7위 이하, 일반글 = 3위 이하
   const maxRankPopular = strictMode ? 2 : 7;
   const maxRankNormal = strictMode ? 2 : 3;
 
@@ -144,7 +152,6 @@ export const fetchKeywordTrackerWithResults = cache(async (
 
         // 성공 여부 계산
         if (result.smart_block_name?.includes("인기글")) {
-          // 인기글일 때
           if (
             result.rank_in_smart_block !== null &&
             result.rank_in_smart_block <= maxRankPopular
@@ -152,7 +159,6 @@ export const fetchKeywordTrackerWithResults = cache(async (
             resultsMap[date].catch_success += 1;
           }
         } else {
-          // 일반 글일 때
           if (
             result.rank_in_smart_block !== null &&
             result.rank_in_smart_block <= maxRankNormal
@@ -191,9 +197,7 @@ export const fetchKeywordTrackerWithResults = cache(async (
 
   // 3) 잠재노출량 및 키워드 잡힌 개수 계산
   const potentialExposure = transformedData.reduce((total, tracker) => {
-    return (
-      total + (tracker.keyword_analytics.daily_first_page_exposure ?? 0)
-    );
+    return total + (tracker.keyword_analytics.daily_first_page_exposure ?? 0);
   }, 0) * 0.2;
 
   const todayCatchCount = transformedData.filter((tracker) => {

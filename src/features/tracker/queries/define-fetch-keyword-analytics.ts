@@ -4,13 +4,15 @@ import { createClient } from "@/utils/supabase/server";
 /**
  * Define the query to fetch keyword analytics data
  * @param keywordId - The id of the project to fetch data for (스키마에 맞춰 필요하다면 다른 파라미터 사용)
+ * @param serviceRole - Whether the request is made with a service role key
  * @returns The Supabase query object
  */
 
 export const defineFetchKeywordAnalyticsQuery = async (
   keywordId: string,
+  serviceRole: boolean = false,
 ) => {
-  const query = createClient()
+  const query = createClient(serviceRole)
     .from("keyword_analytics")
     .select("*")
     .eq("keyword_id", keywordId)

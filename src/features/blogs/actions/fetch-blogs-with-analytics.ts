@@ -2,6 +2,7 @@
 
 import { defineFetchBlogsWithAnalytics } from "../queries/define-fetch-blogs-with-analytics";
 import { BlogsWithAnalytics } from "../types/types";
+import { getYesterdayInKST } from "@/utils/date";
 
 /**
  * Action to fetch blogs and transform the data
@@ -10,14 +11,17 @@ import { BlogsWithAnalytics } from "../types/types";
  * @param endDate - (Optional) The end date for filtering results
  * @returns Transformed blogs with analytics
  */
-
 export async function fetchBlogsWithAnalytics(
   profileId: string,
   startDate?: string,
-  endDate?: string
+  endDate?: string,
 ): Promise<BlogsWithAnalytics[]> {
   // Fetch blogs and analytics
-  const query = await defineFetchBlogsWithAnalytics(profileId, startDate, endDate);
+  const query = await defineFetchBlogsWithAnalytics(
+    profileId,
+    startDate,
+    endDate,
+  );
 
   const { data, error } = query;
 
@@ -25,6 +29,17 @@ export async function fetchBlogsWithAnalytics(
     console.error("Error fetching blogs:", error);
     throw new Error("Failed to fetch blogs");
   }
+
+  const yesterday = getYesterdayInKST();
+  const sevenDaysAgo = new Date(yesterday);
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7); // 최근 7일
+  const oneMonthAgo = new Date(yesterday);
+  oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1); // 최근 1개월
+
+  // Format dates as "YYYY-MM-DD"
+  const formatDate = (date: Date) => date.toISOString().split("T")[0];
+  const sevenDaysAgoStr = formatDate(sevenDaysAgo);
+  const oneMonthAgoStr = formatDate(oneMonthAgo);
 
   // Server-side data transformation
   const transformedData = data.map((blog) => {
@@ -34,25 +49,31 @@ export async function fetchBlogsWithAnalytics(
       analyticsMap[analytic.date] = { daily_visitor: analytic.daily_visitor };
     });
 
+    // Calculate averages
+    const dates = Object.keys(analyticsMap).sort(); // Sorted date keys
+    const recentSevenDays = dates.filter((date) =>
+      date >= sevenDaysAgoStr && date <= yesterday
+    );
+    const recentOneMonth = dates.filter((date) =>
+      date >= oneMonthAgoStr && date <= yesterday
+    );
+
+    const averageDailyVisitors = (selectedDates: string[]) => {
+      if (selectedDates.length === 0) return 0;
+      const totalVisitors = selectedDates.reduce(
+        (sum, date) => sum + analyticsMap[date].daily_visitor,
+        0,
+      );
+      return Math.floor(totalVisitors / selectedDates.length); // 정수 반환
+    };
+
     return {
       ...blog,
       blog_analytics: analyticsMap, // Replace array with a date-keyed object
+      average_daily_visitors_7_days: averageDailyVisitors(recentSevenDays),
+      average_daily_visitors_1_month: averageDailyVisitors(recentOneMonth),
     };
   });
 
   return transformedData;
 }
-
-// [
-//   {
-//     id: "uuid-1",
-//     naver_id: "example_blog",
-//     created_at: "2023-10-01T00:00:00Z",
-//     blog_analytics: {
-//       "2023-10-10": { daily_visitor: 111 },
-//       "2023-10-11": { daily_visitor: 222 },
-//       "2023-10-12": { daily_visitor: 333 }
-//     }
-//   },
-//   ...
-// ];

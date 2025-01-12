@@ -252,11 +252,13 @@ TableCaption.displayName = "TableCaption";
 interface SortableHeaderProps<TData> {
   column: Column<TData, unknown>; // Accepts a column object directly
   title: string; // The title to display in the header
+  shoWIcon?: boolean; // Whether to show the sorting icon
 }
 
 const SortableHeader = <TData,>({
   column,
   title,
+  shoWIcon = true,
 }: SortableHeaderProps<TData>) => {
   const isSorted = column.getIsSorted(); // "asc", "desc", or false
 
@@ -275,13 +277,15 @@ const SortableHeader = <TData,>({
   return (
     <div className="flex items-center cursor-pointer" onClick={handleSorting}>
       {title}
-      {isSorted === "asc" ? (
-        <ArrowUp className="ml-1 h-4 w-4" />
-      ) : isSorted === "desc" ? (
-        <ArrowDown className="ml-1 h-4 w-4" />
-      ) : (
-        <ChevronsUpDown className="ml-1 h-4 w-4 opacity-50" />
-      )}
+      {shoWIcon ? (
+        isSorted === "asc" ? (
+          <ArrowUp className="ml-1 h-4 w-4" />
+        ) : isSorted === "desc" ? (
+          <ArrowDown className="ml-1 h-4 w-4" />
+        ) : (
+          <ChevronsUpDown className="ml-1 h-4 w-4 opacity-50" />
+        )
+      ) : null}
     </div>
   );
 };

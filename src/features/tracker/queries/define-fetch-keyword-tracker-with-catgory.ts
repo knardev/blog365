@@ -6,12 +6,14 @@ import { createClient } from "@/utils/supabase/server";
  * 'keyword_tracker_results'나 'keyword_analytics'는 가져오지 않습니다.
  *
  * @param projectId - The id of the project to fetch keyword trackers for
+ * @param serviceRole - Whether the request is made with a service role key
  * @returns Supabase query object
  */
 export const defineFetchKeywordTrackerWithCategoriesQuery = async (
   projectId: string,
+  serviceRole: boolean = false,
 ) => {
-  const query = createClient()
+  const query = createClient(serviceRole)
     .from("keyword_trackers")
     .select(`
       *,
@@ -19,7 +21,8 @@ export const defineFetchKeywordTrackerWithCategoriesQuery = async (
       keyword_categories(*),
       projects(slug)
     `)
-    .eq("project_id", projectId);
+    .eq("project_id", projectId)
+    .eq("delete_state", false);
 
   return query;
 };

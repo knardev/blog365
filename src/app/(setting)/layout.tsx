@@ -4,5 +4,9 @@ export default function Layout({
   children: React.ReactNode;
 }>) {
   // setting layout
-  return <>{children}</>;
+  return (
+    <html>
+      <body>{children}</body>
+    </html>
+  );
 }

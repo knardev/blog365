@@ -33,7 +33,7 @@ export function KeywordTrackerAddSheet({
   keywordCategories,
 }: {
   projectSlug: string;
-  keywordCategories: KeywordCategories[];
+  keywordCategories: KeywordCategories;
 }) {
   const [keywords, setKeywords] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);

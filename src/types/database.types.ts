@@ -217,6 +217,7 @@ export type Database = {
           active: boolean
           category_id: string | null
           created_at: string
+          delete_state: boolean
           id: string
           keyword_id: string
           project_id: string | null
@@ -225,6 +226,7 @@ export type Database = {
           active?: boolean
           category_id?: string | null
           created_at?: string
+          delete_state?: boolean
           id?: string
           keyword_id: string
           project_id?: string | null
@@ -233,6 +235,7 @@ export type Database = {
           active?: boolean
           category_id?: string | null
           created_at?: string
+          delete_state?: boolean
           id?: string
           keyword_id?: string
           project_id?: string | null
@@ -518,6 +521,35 @@ export type Database = {
             columns: ["keyword_id"]
             isOneToOne: false
             referencedRelation: "keywords"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shared_links: {
+        Row: {
+          active: boolean | null
+          created_at: string
+          id: string
+          project_id: string | null
+        }
+        Insert: {
+          active?: boolean | null
+          created_at?: string
+          id?: string
+          project_id?: string | null
+        }
+        Update: {
+          active?: boolean | null
+          created_at?: string
+          id?: string
+          project_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shared_links_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]

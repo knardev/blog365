@@ -7,7 +7,7 @@ import { CategorySelector } from "@/features/keyword/components/category-selecto
 import { ActiveSwitch } from "@/features/keyword/components/active-switch";
 
 export function generateColumns(
-  keywordCategories: KeywordCategories[],
+  keywordCategories: KeywordCategories,
   projectSlug: string
 ): ColumnDef<KeywordTrackerWithAnalytics>[] {
   return [

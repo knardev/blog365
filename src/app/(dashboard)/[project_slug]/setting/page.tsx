@@ -7,6 +7,11 @@ import { MessageTargetsCards } from "@/features/setting/components/message-targe
 import { KeywordCategoriesCards } from "@/features/setting/components/keyword-category-card";
 import { AddMessageTargetInput } from "@/features/setting/components/add-message-target-input";
 import { Button } from "@/components/ui/button";
+import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from "@/components/ui/resizable";
 import { AddKeywordCategoryInput } from "@/features/setting/components/add-keyword-category-input";
 
 export default async function Page({
@@ -30,31 +35,45 @@ export default async function Page({
 
   return (
     <div className="overflow-auto flex flex-1 flex-col">
-      <div className="flex flex-col space-y-6 p-2">
-        <div className="flex gap-4 items-center">
+      <ResizablePanelGroup direction="horizontal">
+        <ResizablePanel
+          className="p-4 flex flex-col space-y-4"
+          defaultSize={50}
+        >
           <h4 className="text-lg font-semibold">
             매일 분석레포트를 받을 전화번호를 설정해주세요.
           </h4>
-          <Button asChild variant="outline" size="sm">
+          <Button asChild variant="destructive" size="default">
             <a href="http://pf.kakao.com/_DxkVnG/chat" target="_blank">
-              친구 추가 필수
+              카톡채널 친구 추가 (필수)
             </a>
           </Button>
-        </div>
-        <AddMessageTargetInput projectSlug={params.project_slug} />
-        <MessageTargetsCards
-          messageTargets={messageTargets ?? []}
-          projectSlug={params.project_slug}
-        />
-        <h4 className="text-lg font-semibold">
-          키워드 카테고리를 설정해주세요.
-        </h4>
-        <AddKeywordCategoryInput projectSlug={params.project_slug} />
-        <KeywordCategoriesCards
-          keywordCategories={keywordCategories ?? []}
-          projectSlug={params.project_slug}
-        />
-      </div>
+          <AddMessageTargetInput projectSlug={params.project_slug} />
+          <div className="flex-1 overflow-y-auto">
+            <MessageTargetsCards
+              messageTargets={messageTargets ?? []}
+              projectSlug={params.project_slug}
+            />
+          </div>
+        </ResizablePanel>
+        <ResizableHandle disabled />
+        <ResizablePanel
+          className="p-4 flex flex-col space-y-4"
+          defaultSize={50}
+        >
+          <h4 className="text-lg font-semibold">
+            키워드 카테고리를 설정해주세요.
+          </h4>
+          <AddKeywordCategoryInput projectSlug={params.project_slug} />
+          <div className="flex-1 overflow-y-auto">
+            <KeywordCategoriesCards
+              key={params.project_slug}
+              initialCategories={keywordCategories ?? []}
+              projectSlug={params.project_slug}
+            />
+          </div>
+        </ResizablePanel>
+      </ResizablePanelGroup>
     </div>
   );
 }

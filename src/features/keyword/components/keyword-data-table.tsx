@@ -30,7 +30,7 @@ import { KeywordTrackerAddSheet } from "@/features/tracker/components/keyword-tr
 
 interface KeywordDataTableProps {
   data: KeywordTrackerWithAnalytics[];
-  keywordCategories: KeywordCategories[];
+  keywordCategories: KeywordCategories;
   projectSlug: string;
 }
 

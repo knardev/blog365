@@ -6,14 +6,20 @@ import { KeywordCategories } from "@/features/setting/queries/define-fetch-keywo
 /**
  * Action to fetch all keywords
  * @param projectSlug - The slug of the project to fetch keywords for
+ * @param serviceRole - Whether to use the service role
  * @returns Array of keywords or an error if it occurs
  */
-export async function fetchKeywordCategories(projectSlug: string): Promise<
-  KeywordCategories[] | null
+export async function fetchKeywordCategories(
+  projectSlug: string,
+  serviceRole: boolean = false,
+): Promise<
+  KeywordCategories | null
 > {
   // Fetch keywords using defineFetchKeywords
 
-  const { data: projectData, error: projectError } = await createClient()
+  const { data: projectData, error: projectError } = await createClient(
+    serviceRole,
+  )
     .from("projects")
     .select("id")
     .eq("slug", projectSlug)
@@ -21,21 +27,21 @@ export async function fetchKeywordCategories(projectSlug: string): Promise<
 
   if (projectError) {
     console.error("Error fetching project by slug:", projectError);
-    throw new Error("Failed to fetch project by slug");
+    return null;
   }
 
   const projectId = projectData?.id;
 
   if (!projectId) {
-    throw new Error("Project not found");
+    return null;
   }
 
-  const query = defineFetchKeywordCategoriesQuery(projectId);
+  const query = defineFetchKeywordCategoriesQuery(projectId, serviceRole);
   const { data, error } = await query;
 
   if (error) {
     console.error("Error fetching keywords:", error);
-    throw new Error("Failed to fetch keywords");
+    return null;
   }
 
   return data;

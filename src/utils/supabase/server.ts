@@ -1,10 +1,20 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { Database } from "@/types/database.types";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 
-export const createClient = () => {
+export const createClient = (serviceRole: boolean = false) => {
   const cookieStore = cookies();
 
+  if (serviceRole) {
+    // Service Role Key 사용
+    return createSupabaseClient<Database>(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE!,
+    );
+  }
+
+  // 기본 Server Client 생성
   return createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -25,6 +35,6 @@ export const createClient = () => {
           }
         },
       },
-    }
+    },
   );
 };

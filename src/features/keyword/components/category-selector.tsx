@@ -24,7 +24,7 @@ interface CategorySelectorProps {
   trackerId: string;
   currentCategoryId: string | null;
   currentCategoryName: string | null;
-  keywordCategories: KeywordCategories[];
+  keywordCategories: KeywordCategories;
   projectSlug: string;
 }
 

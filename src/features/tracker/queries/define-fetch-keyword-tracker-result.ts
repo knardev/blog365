@@ -6,13 +6,15 @@ import { createClient } from "@/utils/supabase/server";
  * @param trackerId - The tracker to fetch results for
  * @param startDate - (Optional) date >= startDate
  * @param endDate   - (Optional) date <= endDate
+ * @param serviceRole - Whether the request is made with a service role key
  */
 export const defineFetchKeywordTrackerResultsQuery = async (
   trackerId: string,
   startDate?: string,
   endDate?: string,
+  serviceRole: boolean = false,
 ) => {
-  const query = createClient()
+  const query = createClient(serviceRole)
     .from("keyword_tracker_results")
     .select(`
       date,

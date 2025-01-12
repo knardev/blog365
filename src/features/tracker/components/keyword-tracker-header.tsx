@@ -1,13 +1,13 @@
+import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { fetchBlog } from "@/features/blogs/actions/fetch-blogs";
 import { fetchProjectsBlogs } from "@/features/tracker/actions/fetch-projects-blogs";
 import { fetchKeywordCategories } from "@/features/setting/actions/fetch-keyword-categories";
 import { ProjectsBlogsSheet } from "@/features/tracker/components/projects-blogs-sheet";
 import { KeywordTrackerAddSheet } from "@/features/tracker/components/keyword-tracker-add-sheet";
-import { KeywordTrackerWithResultsResponse } from "@/features/tracker/types/types"; // 방금 만든 atom 임포트
+import { KeywordTrackerWithResultsResponse } from "@/features/tracker/types/types";
 import { StrictModeSwitch } from "./strict-mode-switch";
+import { ClipboardShareButton } from "./clipboard-share-button"; // 새로 만든 컴포넌트 import
 
 export async function KeywordTrackerHeader({
   profileId,
@@ -40,12 +40,16 @@ export async function KeywordTrackerHeader({
   // Calculate the total number of keywords
   const totalKeywords = keywordTrackers.length;
 
+  const shareLink = `${process.env.NEXT_PUBLIC_SITE_URL}/share/${projectSlug}`;
+
   return (
     <div className="w-full space-y-4">
       {/* Buttons in a responsive row */}
       <div className="flex justify-between items-center">
         <StrictModeSwitch />
         <div className="flex gap-2">
+          {/* 클립보드 공유 버튼 컴포넌트 사용 */}
+          <ClipboardShareButton shareLink={shareLink} />
           <ProjectsBlogsSheet
             blogs={projectBlogs}
             availableBlogs={availableBlogs}

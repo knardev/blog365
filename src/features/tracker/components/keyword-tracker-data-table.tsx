@@ -21,7 +21,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
 import {
   KeywordTrackerTransformed,
   KeywordTrackerWithResultsResponse,
@@ -33,8 +32,9 @@ import { strictModeState } from "@/features/tracker/atoms/states";
 interface KeywordTrackerDataTableProps {
   data: KeywordTrackerWithResultsResponse;
   allDates: string[];
-  keywordCategories: KeywordCategories[];
+  keywordCategories: KeywordCategories;
   projectSlug: string;
+  readonly?: boolean;
 }
 
 export function KeywordTrackerDataTable({
@@ -42,6 +42,7 @@ export function KeywordTrackerDataTable({
   allDates,
   keywordCategories,
   projectSlug,
+  readonly = false,
 }: KeywordTrackerDataTableProps) {
   const keywordTrakers: KeywordTrackerTransformed[] = data.keyword_trackers;
 
@@ -52,7 +53,7 @@ export function KeywordTrackerDataTable({
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
 
   const columns = React.useMemo(
-    () => generateColumns(allDates, keywordCategories, projectSlug),
+    () => generateColumns(allDates, keywordCategories, projectSlug, readonly),
     [allDates, keywordCategories, projectSlug]
   );
 

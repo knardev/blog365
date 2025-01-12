@@ -63,8 +63,8 @@ export default async function RootLayout({
                 </header>
                 <main className="overflow-auto flex flex-1 p-4">
                   {children}
-                  <Toaster />
                 </main>
+                <Toaster />
               </SidebarInset>
             </SidebarProvider>
           </ThemeProvider>

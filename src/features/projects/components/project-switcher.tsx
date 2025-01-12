@@ -169,7 +169,7 @@ export function ProjectSwitcher({ profileId }: ProjectSwitcherProps) {
               </SidebarMenuButton>
             </DropdownMenuTrigger>
             <DropdownMenuContent
-              className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg"
+              className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg flex flex-col max-h-72"
               align="start"
               side={isMobile ? "bottom" : "right"}
               sideOffset={4}
@@ -177,25 +177,27 @@ export function ProjectSwitcher({ profileId }: ProjectSwitcherProps) {
               <DropdownMenuLabel className="text-xs text-muted-foreground">
                 프로젝트 선택
               </DropdownMenuLabel>
-              {projects.map((project) => (
-                <DropdownMenuItem
-                  key={project.slug}
-                  onClick={() => handleProjectSelect(project)}
-                  className="gap-2 p-2"
-                >
-                  <div className="flex size-6 items-center justify-center rounded-sm border">
-                    <project.logo className="size-4 shrink-0" />
-                  </div>
-                  <span className="flex-1">{project.name}</span>
-                  <MoreHorizontal
-                    className="cursor-pointer"
-                    onClick={(e) => {
-                      e.stopPropagation(); // 드롭다운 닫힘 방지
-                      handleEditProject(project);
-                    }}
-                  />
-                </DropdownMenuItem>
-              ))}
+              <div className="flex-1 overflow-y-auto">
+                {projects.map((project) => (
+                  <DropdownMenuItem
+                    key={project.slug}
+                    onClick={() => handleProjectSelect(project)}
+                    className="gap-2 p-2"
+                  >
+                    <div className="flex size-6 items-center justify-center rounded-sm border">
+                      <project.logo className="size-4 shrink-0" />
+                    </div>
+                    <span className="flex-1">{project.name}</span>
+                    <MoreHorizontal
+                      className="cursor-pointer"
+                      onClick={(e) => {
+                        e.stopPropagation(); // 드롭다운 닫힘 방지
+                        handleEditProject(project);
+                      }}
+                    />
+                  </DropdownMenuItem>
+                ))}
+              </div>
               <DropdownMenuSeparator />
               <DropdownMenuItem className="gap-2 p-2">
                 <DialogTrigger asChild>
