@@ -17,20 +17,12 @@ import {
   TableRow,
   SortableHeader,
 } from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { MoreHorizontal } from "lucide-react";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
 import { KeywordTrackerTransformed } from "@/features/tracker/types/types";
 import { CategorySelector } from "@/features/tracker/components/category-selector";
 import { KeywordCategories } from "@/features/setting/queries/define-fetch-keyword-categories";
-import { softDeleteTracker } from "../actions/soft-delete-keyword-tracker";
+import { KeywordCell } from "./keyword-cell";
 
 /**
  * 숫자를 3자리 단위로 콤마를 찍어주는 유틸 함수
@@ -56,66 +48,18 @@ export function generateColumns(
     {
       accessorKey: "keywords.name",
       header: ({ column }) => <SortableHeader column={column} title="키워드" />,
-      cell: ({ row }) => {
-        const original = row.original;
-        const searchUrl = `https://search.naver.com/search.naver?where=nexearch&sm=top_hty&fbm=0&ie=utf8&query=${original.keywords?.name}`;
-
-        const [dialogOpen, setDialogOpen] = useState(false);
-
-        const handleSoftDelete = async () => {
-          try {
-            await softDeleteTracker(original.id); // Soft Delete Action 호출
-            alert("Tracker deleted successfully.");
-            setDialogOpen(false); // 다이얼로그 닫기
-          } catch (error) {
-            console.error("Error deleting tracker:", error);
-            alert("Failed to delete tracker.");
-          }
-        };
-
-        return (
-          <div className="flex items-center justify-between">
-            <a
-              href={searchUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="text-blue-500 underline"
-            >
-              {row.original.keywords?.name}
-            </a>
-            {!readonly && (
-              <MoreHorizontal
-                className="cursor-pointer ml-2 w-4"
-                onClick={() => setDialogOpen(true)}
-              />
-            )}
-            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>삭제 확인</DialogTitle>
-                </DialogHeader>
-                <p>이 트래커를 삭제하시겠습니까?</p>
-                <div className="flex justify-end gap-2 mt-4">
-                  <Button
-                    variant="default"
-                    onClick={() => setDialogOpen(false)}
-                  >
-                    취소
-                  </Button>
-                  <Button variant="destructive" onClick={handleSoftDelete}>
-                    삭제
-                  </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
-          </div>
-        );
-      },
+      cell: ({ row }) => (
+        <KeywordCell
+          keywords={row.original.keywords}
+          readonly={false} // Pass the readonly flag as needed
+          trackerId={row.original.id} // Pass the tracker ID for deletion
+        />
+      ),
       size: 100,
       meta: {
         isStickyColumn: true,
         stickyColumnLeft: 0,
-        isStickyRow: true, // 헤더 행
+        isStickyRow: true,
         isStickyMobileColumn: true,
       },
     },

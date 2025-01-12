@@ -32,7 +32,7 @@ export function KeywordCategoriesCards({
     if (categories.length === 0) {
       setCategories(initialCategories);
     }
-  }, [initialCategories, setCategories]);
+  }, [initialCategories, setCategories, categories.length]);
 
   // Keep track of loading state for certain actions
   const [loadingIds, setLoadingIds] = useState<Set<string>>(new Set());

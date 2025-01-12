@@ -54,7 +54,7 @@ export function KeywordTrackerDataTable({
 
   const columns = React.useMemo(
     () => generateColumns(allDates, keywordCategories, projectSlug, readonly),
-    [allDates, keywordCategories, projectSlug]
+    [allDates, keywordCategories, projectSlug, readonly]
   );
 
   // Initialize the table
