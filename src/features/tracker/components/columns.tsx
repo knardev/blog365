@@ -51,7 +51,7 @@ export function generateColumns(
       cell: ({ row }) => (
         <KeywordCell
           keywords={row.original.keywords}
-          readonly={false} // Pass the readonly flag as needed
+          readonly={readonly} // Pass the readonly flag as needed
           trackerId={row.original.id} // Pass the tracker ID for deletion
         />
       ),
