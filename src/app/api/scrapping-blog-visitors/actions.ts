@@ -41,18 +41,20 @@ export async function processBlogVisitorData(
       return { success: false, error: "Blog not found" };
     }
 
-    if (blogData.is_influencer) {
-      console.log("[INFO] Skipping influencer blog");
-      return { success: true, message: "Influencer blog" };
-    }
+    // if (blogData.is_influencer) {
+    //   console.log("[INFO] Skipping influencer blog");
+    //   return { success: true, message: "Influencer blog" };
+    // }
 
-    // const finalBlogSlug = blogData.is_influencer ? blogData.influencer_connected_blog_slug : blogSlug;
+    const finalBlogSlug = blogData.is_influencer
+      ? blogData.influencer_connected_blog_slug
+      : blogSlug;
     const blogId = blogData.id;
     console.log(`[INFO] Found blog_id: ${blogId}`);
 
     // Fetch XML data via ZenRows
     const xmlUrl = `https://blog.naver.com/NVisitorgp4Ajax.naver?blogId=${
-      encodeURIComponent(blogSlug)
+      encodeURIComponent(finalBlogSlug)
     }`;
     console.log(`[INFO] Fetching XML data via ZenRows: ${xmlUrl}`);
 
