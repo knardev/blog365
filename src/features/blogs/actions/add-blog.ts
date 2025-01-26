@@ -17,12 +17,14 @@ export async function addBlog({
   blogName,
   blogSlug,
   isInfluencer,
+  connectedBlogSlug,
   revalidateTargetPath,
 }: {
   profileId: string;
   blogName: string;
   blogSlug: string;
   isInfluencer: boolean;
+  connectedBlogSlug?: string;
   revalidateTargetPath?: string;
 }): Promise<void> {
   // Ensure that the slug is unique
@@ -47,6 +49,7 @@ export async function addBlog({
     blogName,
     blogSlug,
     isInfluencer,
+    connectedBlogSlug,
   );
 
   if (error) {

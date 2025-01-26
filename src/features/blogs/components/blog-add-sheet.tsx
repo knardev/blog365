@@ -49,6 +49,7 @@ export function BlogAddSheet({
   const [blogName, setBlogName] = useState("");
   const [blogSlug, setBlogSlug] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [connectedBlogSlug, setConnectedBlogSlug] = useState("");
 
   // 인플루언서 계정 체크박스 상태
   const [isInfluencer, setIsInfluencer] = useState(false);
@@ -77,6 +78,7 @@ export function BlogAddSheet({
         blogName,
         blogSlug: finalSlug,
         isInfluencer,
+        connectedBlogSlug,
         revalidateTargetPath,
       });
 
@@ -88,6 +90,7 @@ export function BlogAddSheet({
       setIsSaving(false);
       setBlogName("");
       setBlogSlug("");
+      setConnectedBlogSlug("");
       setIsInfluencer(false);
     }
   };
@@ -105,7 +108,7 @@ export function BlogAddSheet({
   const nameLabel = isInfluencer ? "인플루언서 별칭" : "블로그 별칭";
   const slugLabel = isInfluencer ? "인플루언서 주소/ID" : "블로그 주소/ID";
   const slugPlaceholder = isInfluencer
-    ? "인플루언서 주소/아이디를 입력하세요."
+    ? "인플루언서 주소를 입력하세요. in.naver.com/~~~"
     : "블로그 주소/아이디를 입력하세요.";
 
   const tooltipContent = isInfluencer
@@ -169,6 +172,26 @@ export function BlogAddSheet({
               disabled={isSaving}
             />
           </div>
+
+          {isInfluencer && (
+            <div className="flex flex-col space-y-2">
+              <div className="flex items-center space-x-1">
+                <Label htmlFor="connectedBlogSlug">
+                  인플루언서와 연결된 블로그
+                </Label>
+                <QuestionMarkTooltip
+                  content={"인플루언서와 연결된 블로그의 주소를 입력해주세요."}
+                />
+              </div>
+              <Input
+                id="connectedBlogSlug"
+                placeholder={"블로그 주소/아이디를 입력하세요."}
+                value={connectedBlogSlug}
+                onChange={(e) => setConnectedBlogSlug(e.target.value)}
+                disabled={isSaving}
+              />
+            </div>
+          )}
         </div>
         <SheetFooter>
           <div className="flex justify-end space-x-2">

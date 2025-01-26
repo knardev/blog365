@@ -13,6 +13,7 @@ export const defineAddBlogQuery = (
   blogName: string,
   blogSlug: string,
   isInfluencer: boolean = false,
+  connectedBlogSlug?: string,
 ) => {
   return createClient()
     .from("blogs")
@@ -21,6 +22,7 @@ export const defineAddBlogQuery = (
       name: blogName,
       blog_slug: blogSlug,
       is_influencer: isInfluencer,
+      influencer_connected_blog_slug: connectedBlogSlug,
     })
     .select();
 };
