@@ -76,7 +76,7 @@ export async function processKeywordTrackerResult({
     // 2-A) Fetch the blog_slug
     const { data: blogData, error: blogError } = await supabase
       .from("blogs")
-      .select("blog_slug")
+      .select("blog_slug, is_influencer, influencer_connected_blog_slug")
       .eq("id", blogId)
       .single();
 
@@ -89,6 +89,14 @@ export async function processKeywordTrackerResult({
       continue;
     }
 
+    const isInfluencer = blogData?.is_influencer;
+    const influencerConnectedBlogSlug = blogData
+      ?.influencer_connected_blog_slug ?? "";
+    // If the blog is an influencer, use the connected blog_slug
+    // Otherwise, use the blog_slug
+    // const blogSlug = isInfluencer
+    //   ? influencerConnectedBlogSlug
+    //   : blogData?.blog_slug;
     const blogSlug = blogData?.blog_slug;
     if (!blogSlug) {
       console.warn(
@@ -142,7 +150,7 @@ export async function processKeywordTrackerResult({
               date: today,
               rank_in_smart_block: item.rank,
               blog_id: blogId,
-              smart_block_name: block.title ?? "Smart Block",
+              smart_block_name: block.title ?? "스마트블럭",
               post_url: item.postUrl,
             });
           }

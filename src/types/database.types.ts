@@ -47,6 +47,7 @@ export type Database = {
           created_at: string
           delete_state: boolean
           id: string
+          influencer_connected_blog_slug: string | null
           is_influencer: boolean | null
           name: string | null
           owner_profile_id: string | null
@@ -56,6 +57,7 @@ export type Database = {
           created_at?: string
           delete_state?: boolean
           id?: string
+          influencer_connected_blog_slug?: string | null
           is_influencer?: boolean | null
           name?: string | null
           owner_profile_id?: string | null
@@ -65,6 +67,7 @@ export type Database = {
           created_at?: string
           delete_state?: boolean
           id?: string
+          influencer_connected_blog_slug?: string | null
           is_influencer?: boolean | null
           name?: string | null
           owner_profile_id?: string | null
@@ -577,7 +580,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      random_slug_8: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
     }
     Enums: {
       keyword_tracker_status: "WAITING" | "PROGRESSING" | "COMPLETED"
