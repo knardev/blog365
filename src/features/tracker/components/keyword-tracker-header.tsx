@@ -100,7 +100,7 @@ export async function KeywordTrackerHeader({
           </CardHeader>
           <CardContent className="flex items-center justify-between">
             <span className="text-2xl font-semibold">
-              {potential_exposure.toFixed(0)} 회
+              {potential_exposure.toFixed(0)} 명
             </span>
           </CardContent>
         </Card>
