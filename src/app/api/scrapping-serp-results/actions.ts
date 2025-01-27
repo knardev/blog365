@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
-import { ZenRows } from "zenrows"; // ZenRows 추가
+import { ZenRows } from "zenrows";
 import * as cheerio from "cheerio";
-import { getTodayInKST, getYesterdayInKST } from "@/utils/date";
+import { getTodayInKST } from "@/utils/date";
 
 // ZenRows API Key (환경 변수로 관리 권장)
 const ZENROWS_API_KEY = process.env.ZENROW_API_KEY ?? "";
@@ -23,7 +23,7 @@ const supabase = createClient(supabaseUrl, supabaseKey, {
   },
 });
 
-interface SmartBlockItem {
+export interface SmartBlockItem {
   thumbnailImageUrl: string | null;
   siteName: string | null;
   siteUrl: string | null;
@@ -36,23 +36,29 @@ interface SmartBlockItem {
   rank: number;
 }
 
-interface SmartBlock {
+export interface SmartBlock {
   title: string | null;
   items: SmartBlockItem[];
-  moreButtonLink: string | null;
-  moreButtonRawLink: string | null;
+  moreButtonLink: string | null; // 더보기 최종 URL
+  moreButtonRawLink: string | null; // 더보기에 실제로 쓰일 파라미터 링크
 }
 
-interface PopularTopicItem {
+export interface PopularTopicItem {
   title: string | null;
   thumbnailImageUrl: string | null;
   detailSerpUrl: string | null;
 }
 
-interface SerpData {
-  smartBlocks: SmartBlock[];
-  popularTopics: PopularTopicItem[];
-  basicBlock: SmartBlockItem[];
+export interface BasicBlock {
+  title: string | null;
+  items: SmartBlockItem[];
+}
+
+export interface SerpData {
+  smartBlocks: SmartBlock[]; // fds-collection-root 등에서 추출한 스마트 블럭
+  popularBlocks: SmartBlock[]; // "인기글" 블럭
+  basicBlocks: BasicBlock[]; // 일반 블럭
+  popularTopics: PopularTopicItem[]; // "인기주제" 정보
 }
 
 /**
@@ -76,128 +82,70 @@ async function fetchHtmlWithZenRows(url: string): Promise<string | null> {
 }
 
 /**
- * Fetch SERP results for a given keyword and process additional data from `moreButtonLink`.
- * @param keyword - The search keyword.
- * @returns {Promise<SerpData | null>} Parsed SERP data or null if an error occurs.
- */
-export async function fetchSerpResults(
-  keyword: string,
-): Promise<SerpData | null> {
-  console.log(`[ACTION] Fetching SERP results for keyword: ${keyword}`);
-
-  const url = `https://search.naver.com/search.naver?query=${
-    encodeURIComponent(keyword)
-  }`;
-
-  const html = await fetchHtmlWithZenRows(url);
-  if (!html) {
-    console.error("[ERROR] Failed to fetch or process SERP results.");
-    return null;
-  }
-
-  const { smartBlocks, popularTopics, basicBlock } = extractSmartBlocks(
-    html,
-    url,
-  );
-
-  // Fetch additional data for each SmartBlock's moreButtonLink
-  for (const block of smartBlocks) {
-    if (block.moreButtonRawLink) {
-      console.log(`[INFO] Fetching additional data for block: ${block.title}`);
-      if (block.title?.includes("인기글")) continue;
-
-      const additionalHtml = await fetchHtmlWithZenRows(
-        block.moreButtonRawLink,
-      );
-      if (additionalHtml) {
-        const $ = cheerio.load(additionalHtml);
-        const additionalItems: SmartBlockItem[] = [];
-        $("div.fds-ugc-block-mod").each((index, itemElement) => {
-          const thumbnailImageUrl =
-            $(itemElement).find(".fds-thumb-small img").attr("src") || null;
-          const siteName =
-            $(itemElement).find(".fds-info-inner-text span").text() || null;
-          const siteUrl =
-            $(itemElement).find(".fds-info-inner-text").attr("href") || null;
-          const isBlog = siteUrl?.includes("blog") ?? false;
-          const issueDate =
-            $(itemElement).find(".fds-info-sub-inner-text").text() || null;
-          const postTitle = $(itemElement)
-            .find(".fds-comps-right-image-text-title span")
-            .text() || null;
-          const postUrl = $(itemElement)
-            .find(".fds-comps-right-image-text-title")
-            .attr("href") || null;
-          const postContent = $(itemElement)
-            .find(".fds-comps-right-image-text-content span")
-            .text() || null;
-          const postImageCountText = $(itemElement)
-            .find(".fds-comps-right-image-content-image-badge span")
-            .text();
-          const postImageCount = postImageCountText
-            ? parseInt(postImageCountText, 10)
-            : null;
-          const rank = index + 1;
-
-          additionalItems.push({
-            thumbnailImageUrl,
-            siteName,
-            siteUrl,
-            isBlog,
-            issueDate,
-            postTitle,
-            postUrl,
-            postContent,
-            postImageCount,
-            rank,
-          });
-        });
-        block.items.push(...additionalItems);
-      }
-    }
-  }
-
-  return { smartBlocks, popularTopics, basicBlock };
-}
-
-/**
- * Fetch and parse all data from the moreButtonLink.
- * @param moreButtonLink - The URL to fetch data from.
- * @returns A list of SmartBlockItem objects.
+ * "더보기" 버튼을 통해 추가로 가져와야 할 데이터가 있을 때,
+ * ZenRows를 사용하여 해당 데이터를 추출.
+ *
+ * @param moreButtonLink - 더보기 버튼 링크 (lb_api 포맷 등)
+ * @returns 추가로 추출된 SmartBlockItem 목록
  */
 async function fetchAllDetailSerpData(
   moreButtonLink: string,
 ): Promise<SmartBlockItem[]> {
-  const start = 4;
+  const start = 4; // 예시로 start=4로 잡아둠 (원하는 로직에 맞게 변경 가능)
   const items: SmartBlockItem[] = [];
 
-  // Construct the URL with the updated start parameter
-  const url = new URL(moreButtonLink);
-  url.searchParams.set("start", start.toString());
+  // 쿼리 파라미터를 활용하고 싶다면 아래 예시처럼 URL을 재구성
+  const urlObj = new URL(moreButtonLink);
+  urlObj.searchParams.set("start", start.toString());
+  const finalUrl = urlObj.toString();
 
-  console.log(`[FETCH] Fetching data from URL: ${url}`);
+  console.log(`[FETCH] Fetching data (via ZenRows) from: ${finalUrl}`);
 
   try {
-    const response = await fetch(url.toString(), {
-      method: "GET",
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.212 Safari/537.36",
-      },
-    });
-
+    // ZenRows 요청
+    const response = await zenrowsClient.get(finalUrl);
     if (!response.ok) {
       console.error(`[ERROR] Failed to fetch data: ${response.status}`);
+      return items;
     }
 
-    const json = await response.json();
-    const collection = json?.dom?.collection || json?.collection;
+    // 더보기 API 응답이 JSON이라 가정
+    const jsonString = await response.text();
+    let jsonData: {
+      log: {
+        gvar: {
+          g_query: string;
+          g_tab: string;
+          g_stab: string;
+          g_ssc: string;
+          g_puid: string;
+          g_suid: string;
+          g_crt: string;
+        };
+        fetchLog: string;
+      };
+      dom?: {
+        header: {
+          html: string;
+        };
+        collection?: { style: string; script: string; html: string }[];
+        url: string;
+      };
+    } | null;
+    try {
+      jsonData = JSON.parse(jsonString);
+    } catch (e) {
+      console.error(`[ERROR] Failed to parse JSON: ${e}`);
+      return items;
+    }
 
+    const collection = jsonData?.dom?.collection;
     if (!collection || !collection[0]?.html) {
       console.log("[INFO] No more data to fetch.");
+      return items;
     }
 
-    // Parse the HTML to extract SmartBlockItems
+    // HTML 파싱
     const html = collection[0].html;
     const $ = cheerio.load(html);
 
@@ -211,9 +159,9 @@ async function fetchAllDetailSerpData(
       const isBlog = siteUrl?.includes("blog") ?? false;
       const issueDate =
         $(itemElement).find(".fds-info-sub-inner-text").text() || null;
-      const postTitle = $(itemElement)
-        .find(".fds-comps-right-image-text-title span")
-        .text() || null;
+      const postTitle =
+        $(itemElement).find(".fds-comps-right-image-text-title span").text() ||
+        null;
       const postUrl = $(itemElement)
         .find(".fds-comps-right-image-text-title")
         .attr("href") || null;
@@ -242,28 +190,24 @@ async function fetchAllDetailSerpData(
       });
     });
 
-    console.log(`[INFO] Fetched ${items.length} items so far.`);
+    console.log(`[INFO] Fetched ${items.length} additional items.`);
   } catch (error) {
-    console.error(
-      `[ERROR] Error while fetching or processing data: ${error}`,
-    );
+    console.error(`[ERROR] Error while fetching or processing data: ${error}`);
   }
 
   return items;
 }
 
-function extractSmartBlocks(
-  html: string,
-  url: string,
-): {
-  smartBlocks: SmartBlock[];
-  popularTopics: PopularTopicItem[];
-  basicBlock: SmartBlockItem[];
-} {
-  const $ = cheerio.load(html);
+/**
+ * fds-collection-root 형태의 "스마트블럭"을 파싱하는 함수
+ */
+function parseSmartBlocks(
+  $: cheerio.CheerioAPI,
+  pageUrl: string,
+): SmartBlock[] {
   const smartBlocks: SmartBlock[] = [];
-  const popularTopics: PopularTopicItem[] = [];
 
+  // 제외할 타이틀 키워드 설정
   const excludeValues = new Set([
     "VIEW",
     "뉴스",
@@ -287,39 +231,10 @@ function extractSmartBlocks(
     "오디오클립",
   ]);
 
-  // Process `fds-collection-root` blocks
   $("div.fds-collection-root").each((_, blockElement) => {
     const title =
       $(blockElement).find(".fds-comps-header-headline").text().trim() || null;
-
-    // Skip excluded titles
     if (!title || excludeValues.has(title)) return;
-
-    // Process Popular Topics
-    if (title.includes("인기주제")) {
-      $(blockElement)
-        .find(".fds-comps-keyword-chip")
-        .each((_, topicElement) => {
-          const topicTitle = $(topicElement)
-            .find(".fds-comps-keyword-chip-text")
-            .text()
-            .trim() || null;
-          const thumbnailImageUrl = $(topicElement)
-            .find(".fds-comps-keyword-chip-image")
-            .attr("src") || null;
-          const detailSerpUrl = $(topicElement).attr("href") ||
-            null;
-
-          if (topicTitle) {
-            popularTopics.push({
-              title: topicTitle,
-              thumbnailImageUrl,
-              detailSerpUrl,
-            });
-          }
-        });
-      return;
-    }
 
     const items: SmartBlockItem[] = [];
 
@@ -366,27 +281,45 @@ function extractSmartBlocks(
         });
       });
 
-    // Extract `moreButtonLink` for the Smart Block
+    // 더보기 버튼 정보 추출
     const moreButtonRawLink = $(blockElement)
       .find(".fds-comps-footer-more-button-container")
       .attr("data-lb-trigger") || null;
-    const moreButtonLink = `${url}#lb_api=${moreButtonRawLink}`;
+    // 실제 URL로 만들기
+    const moreButtonLink = moreButtonRawLink
+      ? `${pageUrl}#lb_api=${moreButtonRawLink}`
+      : null;
 
-    // Add the Smart Block to the list
-    smartBlocks.push({ title, items, moreButtonLink, moreButtonRawLink });
+    smartBlocks.push({
+      title,
+      items,
+      moreButtonLink,
+      moreButtonRawLink,
+    });
   });
 
-  // Process `api_subject_bx` blocks with "인기글" in the title
+  return smartBlocks;
+}
+
+/**
+ * "인기글" 블럭을 추출하는 함수
+ */
+function parsePopularBlocks(
+  $: cheerio.CheerioAPI,
+  pageUrl: string,
+): SmartBlock[] {
+  const popularBlocks: SmartBlock[] = [];
+
   $("div.api_subject_bx").each((_, blockElement) => {
     const title = $(blockElement)
       .find(".mod_title_area > .title_wrap > .title")
       .text()
       .trim();
 
+    // "인기글"이 아닌 경우 스킵
     if (!title.includes("인기글")) return;
 
     const items: SmartBlockItem[] = [];
-
     $(blockElement)
       .find(".view_wrap")
       .each((index, itemElement) => {
@@ -403,8 +336,9 @@ function extractSmartBlocks(
           .find(".title_area > a")
           .text()
           .trim() || null;
-        const postUrl = $(itemElement).find(".title_area > a").attr("href") ||
-          null;
+        const postUrl = $(itemElement)
+          .find(".title_area > a")
+          .attr("href") || null;
         const postContent = $(itemElement)
           .find(".dsc_area > a")
           .text()
@@ -432,23 +366,73 @@ function extractSmartBlocks(
         });
       });
 
-    const moreButtonRawLink = $(blockElement)
-      .find(".mod_more_wrap > a")
-      .attr("data-lb-trigger") || null;
+    const moreButtonRawLink =
+      $(blockElement).find(".mod_more_wrap > a").attr("data-lb-trigger") ||
+      null;
     const moreButtonLink = moreButtonRawLink
-      ? `${url}#lb_api=${moreButtonRawLink}`
+      ? `${pageUrl}#lb_api=${moreButtonRawLink}`
       : null;
 
-    smartBlocks.push({ title, items, moreButtonLink, moreButtonRawLink });
+    popularBlocks.push({
+      title,
+      items,
+      moreButtonLink,
+      moreButtonRawLink,
+    });
   });
 
-  // Process `total_wrap` blocks for basic blocks
-  const basicBlockItems: SmartBlockItem[] = [];
+  return popularBlocks;
+}
 
-  $(".spw_rerank.type_head._rra_head li.bx").each((index, parentElement) => {
+/**
+ * "인기주제" (인기 검색어 등) 정보를 파싱하는 함수
+ */
+function parsePopularTopics($: cheerio.CheerioAPI): PopularTopicItem[] {
+  const popularTopics: PopularTopicItem[] = [];
+
+  // "인기주제"가 표시된 영역 찾기
+  $("div.fds-collection-root").each((_, blockElement) => {
+    const title =
+      $(blockElement).find(".fds-comps-header-headline").text().trim() || "";
+
+    if (title.includes("인기주제")) {
+      $(blockElement)
+        .find(".fds-comps-keyword-chip")
+        .each((_, topicElement) => {
+          const topicTitle =
+            $(topicElement).find(".fds-comps-keyword-chip-text").text()
+              .trim() ||
+            null;
+          const thumbnailImageUrl = $(topicElement)
+            .find(".fds-comps-keyword-chip-image")
+            .attr("src") || null;
+          const detailSerpUrl = $(topicElement).attr("href") || null;
+
+          if (topicTitle) {
+            popularTopics.push({
+              title: topicTitle,
+              thumbnailImageUrl,
+              detailSerpUrl,
+            });
+          }
+        });
+    }
+  });
+
+  return popularTopics;
+}
+
+/**
+ * 일반 (기본) 블럭(예: VIEW 영역)을 파싱하는 함수
+ */
+function parseBasicBlocks($: cheerio.CheerioAPI): BasicBlock[] {
+  const basicBlocks: BasicBlock[] = [];
+  const firstBlockItems: SmartBlockItem[] = [];
+  const secondBlockItems: SmartBlockItem[] = [];
+
+  // 첫 번째 블럭
+  $(".spw_rerank._rra_head li.bx").each((index, parentElement) => {
     const viewWrap = $(parentElement).find("div.view_wrap");
-
-    // Skip this block if `div.view_wrap` is not found
     if (viewWrap.length === 0) {
       return;
     }
@@ -468,10 +452,9 @@ function extractSmartBlocks(
     const postImageCount = postImageCountText
       ? parseInt(postImageCountText, 10)
       : null;
+    const rank = index + 1;
 
-    const rank = index + 1; // Assign the rank based on the parent element's index
-
-    basicBlockItems.push({
+    firstBlockItems.push({
       thumbnailImageUrl,
       siteName,
       siteUrl,
@@ -484,8 +467,107 @@ function extractSmartBlocks(
       rank,
     });
   });
+  basicBlocks.push({
+    title: "첫번째 블럭",
+    items: firstBlockItems,
+  });
 
-  return { smartBlocks, popularTopics, basicBlock: basicBlockItems };
+  // 두 번째 블럭
+  $(".spw_rerank._rra_body li.bx").each((index, parentElement) => {
+    const viewWrap = $(parentElement).find("div.view_wrap");
+    if (viewWrap.length === 0) {
+      return;
+    }
+
+    const thumbnailImageUrl = viewWrap.find(".user_thumb img").attr("src") ||
+      null;
+    const siteName = viewWrap.find(".user_info > a").text().trim() || null;
+    const siteUrl = viewWrap.find("a.user_thumb").attr("href") || null;
+    const isBlog = siteUrl?.includes("blog") ?? false;
+    const issueDate = viewWrap.find(".user_info > span.sub").text().trim() ||
+      null;
+    const postTitle = viewWrap.find(".title_area > a").text().trim() || null;
+    const postUrl = viewWrap.find(".title_area > a").attr("href") || null;
+    const postContent = viewWrap.find(".dsc_area > a").text().trim() || null;
+    const postImageCountText = viewWrap.find(".thumb_link > span.num").text()
+      .trim();
+    const postImageCount = postImageCountText
+      ? parseInt(postImageCountText, 10)
+      : null;
+    const rank = index + 1;
+
+    secondBlockItems.push({
+      thumbnailImageUrl,
+      siteName,
+      siteUrl,
+      isBlog,
+      issueDate,
+      postTitle,
+      postUrl,
+      postContent,
+      postImageCount,
+      rank,
+    });
+  });
+  basicBlocks.push({
+    title: "두번째 블럭",
+    items: secondBlockItems,
+  });
+
+  return basicBlocks;
+}
+
+/**
+ * Fetch SERP results for a given keyword and process additional data from `moreButtonLink`.
+ * @param keyword - The search keyword.
+ * @returns {Promise<SerpData | null>} Parsed SERP data or null if an error occurs.
+ */
+export async function fetchSerpResults(
+  keyword: string,
+): Promise<SerpData | null> {
+  console.log(`[ACTION] Fetching SERP results for keyword: ${keyword}`);
+
+  const url = `https://search.naver.com/search.naver?query=${
+    encodeURIComponent(
+      keyword,
+    )
+  }`;
+
+  // 1) 기본 HTML 가져오기
+  const html = await fetchHtmlWithZenRows(url);
+  if (!html) {
+    console.error("[ERROR] Failed to fetch or process SERP results.");
+    return null;
+  }
+
+  // 2) HTML 파싱 후, 각각의 블럭 추출
+  const $ = cheerio.load(html);
+  const smartBlocks = parseSmartBlocks($, url);
+  const popularBlocks = parsePopularBlocks($, url);
+  const popularTopics = parsePopularTopics($);
+  const basicBlocks = parseBasicBlocks($);
+
+  // 3) 스마트블럭 / 인기블럭 에 대해서 더보기 버튼이 있으면, 추가 데이터 수집
+  for (const block of [...smartBlocks, ...popularBlocks]) {
+    if (block.moreButtonRawLink) {
+      console.log(`[INFO] Fetching additional data for block: ${block.title}`);
+      // ZenRows를 사용하도록 수정한 함수
+      const additionalItems = await fetchAllDetailSerpData(
+        block.moreButtonRawLink,
+      );
+      if (additionalItems.length > 0) {
+        block.items.push(...additionalItems);
+      }
+    }
+  }
+
+  // 4) 결과 리턴
+  return {
+    smartBlocks,
+    popularBlocks,
+    basicBlocks,
+    popularTopics,
+  };
 }
 
 /**
@@ -501,37 +583,16 @@ export async function saveSerpResults(
   console.log(`[ACTION] Saving SERP results for keyword ID: ${keywordId}`);
 
   const today = getTodayInKST();
-  // const today = getYesterdayInKST();
-
-  // const { data: existingResult, error: existingError } = await supabase
-  //   .from("serp_results")
-  //   .select("*")
-  //   .eq("keyword_id", keywordId)
-  //   .eq("date", today)
-  //   .single();
-
-  // if (existingError && existingError.code !== "PGRST116") {
-  //   console.error(
-  //     "[ERROR] Failed to check existing SERP results:",
-  //     existingError.message,
-  //   );
-  //   return { success: false, error: existingError.message };
-  // }
-
-  // if (existingResult) {
-  //   console.log(
-  //     `[INFO] SERP results already exist for keyword ID: ${keywordId}`,
-  //   );
-  //   return { success: true }; // Skip saving if already exists
-  // }
 
   const { error: insertError } = await supabase.from("serp_results").insert({
     keyword_id: keywordId,
     date: today,
     smart_block_datas: serpData.smartBlocks,
+    popular_block_datas: serpData.popularBlocks,
     popular_topic_datas: serpData.popularTopics,
-    basic_block_datas: serpData.basicBlock,
+    basic_block_datas: serpData.basicBlocks,
     smart_blocks: serpData.smartBlocks.map((block) => block.title),
+    popular_blocks: serpData.popularBlocks.map((block) => block.title),
     popular_topics: serpData.popularTopics.map((topic) => topic.title),
   });
 

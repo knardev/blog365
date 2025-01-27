@@ -98,6 +98,7 @@ export async function processKeywordTrackerResult({
     //   ? influencerConnectedBlogSlug
     //   : blogData?.blog_slug;
     const blogSlug = blogData?.blog_slug;
+    console.log(`[INFO] Found blog_slug for blogId=${blogId}: ${blogSlug}`);
     if (!blogSlug) {
       console.warn(
         `[WARN] No blog_slug found for blogId=${blogId}. Skipping...`,

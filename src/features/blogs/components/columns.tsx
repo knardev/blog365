@@ -10,18 +10,6 @@ export function generateColumns(
   // Static columns
   const staticColumns: ColumnDef<BlogsWithAnalytics>[] = [
     {
-      accessorKey: "name",
-      header: ({ column }) => <SortableHeader column={column} title="별칭" />,
-      size: 80, // Fixed width
-      meta: {
-        isStickyColumn: true,
-        stickyColumnLeft: 0,
-        isStickyRow: true,
-        isLastSticky: false,
-        isStickyMobileColumn: true,
-      },
-    },
-    {
       accessorKey: "blog_slug",
       header: ({ column }) => (
         <SortableHeader column={column} title="블로그 ID" />
@@ -42,10 +30,23 @@ export function generateColumns(
           </div>
         );
       },
+
       size: 130, // Fixed width
       meta: {
         isStickyColumn: true,
-        stickyColumnLeft: 80,
+        stickyColumnLeft: 0,
+        isStickyRow: true,
+        isLastSticky: false,
+        isStickyMobileColumn: true,
+      },
+    },
+    {
+      accessorKey: "name",
+      header: ({ column }) => <SortableHeader column={column} title="별칭" />,
+      size: 80, // Fixed width
+      meta: {
+        isStickyColumn: true,
+        stickyColumnLeft: 130,
         isStickyRow: true,
         isLastSticky: false,
         isStickyMobileColumn: false,
@@ -60,7 +61,7 @@ export function generateColumns(
         const avg7Days = row.original.average_daily_visitors_7_days ?? 0;
         return <div className="text-center select-none">{avg7Days}</div>;
       },
-      size: 120, // Fixed width
+      size: 100, // Fixed width
       meta: {
         stickyColumnLeft: 210,
         isStickyColumn: true,
@@ -78,9 +79,9 @@ export function generateColumns(
         const avg1Month = row.original.average_daily_visitors_1_month ?? 0;
         return <div className="text-center select-none">{avg1Month}</div>;
       },
-      size: 120, // Fixed width
+      size: 100, // Fixed width
       meta: {
-        stickyColumnLeft: 330,
+        stickyColumnLeft: 310,
         isStickyColumn: true,
         isLastSticky: true,
         isStickyRow: true,
