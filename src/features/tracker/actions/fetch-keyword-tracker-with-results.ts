@@ -1,10 +1,9 @@
-import {
-  DailyResult,
-  KeywordTrackerTransformed,
-  KeywordTrackerWithResultsResponse,
-  MergedDataRow,
-} from "../types/types";
+"use server";
+// utils
+import { cache } from "react";
+import { getTodayInKST, getYesterdayInKST } from "@/utils/date";
 import { createClient } from "@/utils/supabase/server";
+// quries
 import {
   defineFetchKeywordAnalyticsQuery,
 } from "@/features/tracker/queries/define-fetch-keyword-analytics";
@@ -12,29 +11,57 @@ import {
   defineFetchKeywordTrackerResultsQuery,
 } from "@/features/tracker/queries/define-fetch-keyword-tracker-result";
 import { defineFetchKeywordTrackerWithCategoriesQuery } from "@/features/tracker/queries/define-fetch-keyword-tracker-with-catgory";
-import { subDays } from "date-fns";
-import { formatInTimeZone } from "date-fns-tz";
-import { cache } from "react";
+// types
+import {
+  DailyResult,
+  KeywordTrackerTransformed,
+  KeywordTrackerWithResultsResponse,
+  MergedDataRow,
+} from "../types/types";
 
 /**
- * Fetches keyword trackers, merges analytics, calculates daily results, etc.
- * @param projectSlug - Slug of the project
- * @param startDate - optional start date
- * @param endDate - optional end date
- * @param strictMode - if true, more strict criteria for 'catch_success'
- * @param serviceRole - if true, use service role client
- * @returns KeywordTrackerWithResultsResponse or null
+ * 무한 스크롤용 서버 액션
+ * @param projectSlug   - 프로젝트 slug
+ * @param offset        - 페이지네이션 offset
+ * @param limit         - 페이지네이션 limit
+ * @param startDate     - 시작 날짜
+ * @param endDate       - 끝 날짜
+ * @param fetchAll      - 전체 데이터 가져오기 여부
+ * @param strictMode    - strict 모드 여부
+ * @param serviceRole   - service role 사용 여부
+ * @returns { data, totalCount }
+ *    data: KeywordTrackerTransformed[] (가져온 subset)
+ *    totalCount: number (전체 트래커 개수)
  */
 export const fetchKeywordTrackerWithResults = cache(async (
-  projectSlug: string,
-  startDate?: string,
-  endDate?: string,
-  strictMode = false, // 기본값: false
-  serviceRole = false, // 기본값: false
-): Promise<KeywordTrackerWithResultsResponse | null> => {
+  {
+    projectSlug,
+    offset = 0,
+    limit = 50,
+    startDate,
+    endDate,
+    fetchAll = false,
+    strictMode = false,
+    serviceRole = false,
+  }: {
+    projectSlug: string;
+    offset?: number;
+    limit?: number;
+    startDate?: string;
+    endDate?: string;
+    fetchAll?: boolean;
+    strictMode?: boolean;
+    serviceRole?: boolean;
+  },
+): Promise<{
+  data: KeywordTrackerTransformed[];
+  potentialExposureByDate?: Record<string, number>;
+  catchCountByDate?: Record<string, number>;
+}> => {
   // Create Supabase client (use service role if specified)
   const supabase = createClient(serviceRole);
 
+  // 0) 프로젝트 ID 조회
   const { data: projectData, error: projectError } = await supabase
     .from("projects")
     .select("id")
@@ -43,28 +70,35 @@ export const fetchKeywordTrackerWithResults = cache(async (
 
   if (projectError || !projectData) {
     console.error("Error fetching project by slug:", projectError);
-    return null;
+    return { data: [] };
   }
-
   const projectId = projectData.id;
 
-  // 1) 키워드 트래커 목록 가져오기
-  const trackerQuery = await defineFetchKeywordTrackerWithCategoriesQuery(
+  // 2) 실제 키워드 트래커 데이터 가져오기 + offset/limit 적용
+  //    정렬(sorting)이 있다면, 예: 첫 번째 정렬 조건만 사용 or 여러 조건
+  // 페이지네이션 범위 설정
+  if (fetchAll) {
+    offset = 0;
+    limit = 200;
+  }
+  const range = {
+    offset,
+    limit,
+  };
+
+  // 키워드 트래커 데이터 가져오기
+  const trackerQuery = defineFetchKeywordTrackerWithCategoriesQuery(
     projectId,
     serviceRole,
+    range,
   );
-  const { data: trackersData, error: trackersError } = trackerQuery;
 
-  if (trackersError) {
+  const { data: trackersData, error: trackersError } = await trackerQuery;
+
+  if (trackersError || !trackersData) {
     console.error("Error fetching trackers:", trackersError);
-    return null;
-  }
-  if (!trackersData || trackersData.length === 0) {
     return {
-      keyword_trackers: [],
-      potential_exposure: 0,
-      today_catch_count: 0,
-      week_catch_count: 0,
+      data: [],
     };
   }
 
@@ -89,8 +123,8 @@ export const fetchKeywordTrackerWithResults = cache(async (
     // (2) 키워드 추적 결과 가져오기
     const resultsQuery = await defineFetchKeywordTrackerResultsQuery(
       tracker.id,
-      startDate,
-      endDate,
+      undefined,
+      undefined,
       serviceRole,
     );
     const { data: resultsArray, error: resultsError } = resultsQuery;
@@ -119,25 +153,12 @@ export const fetchKeywordTrackerWithResults = cache(async (
       raw_results: resultsArray ?? [],
     });
   }
-
-  // 2) transformedData 생성
-  const KST = "Asia/Seoul";
-  const now = new Date();
-
-  // 한국시간 기준 오늘 날짜
-  const today = formatInTimeZone(now, KST, "yyyy-MM-dd");
-
-  // 한국시간 기준 어제 날짜
-  const yesterdayDate = subDays(now, 1);
-  const yesterday = formatInTimeZone(yesterdayDate, KST, "yyyy-MM-dd");
-
-  // 어제 기준 7일 전 날짜
-  const weekAgoDate = subDays(now, 7);
-  const weekAgo = formatInTimeZone(weekAgoDate, KST, "yyyy-MM-dd");
-
   // strictMode에 따라 인기글/일반글의 최대 rank 결정
   const maxRankPopular = strictMode ? 2 : 7;
   const maxRankNormal = strictMode ? 2 : 3;
+
+  // 2) transformedData 생성
+  const today = getTodayInKST();
 
   const transformedData: KeywordTrackerTransformed[] = mergedData.map(
     (tracker) => {
@@ -195,27 +216,35 @@ export const fetchKeywordTrackerWithResults = cache(async (
     },
   );
 
-  // 3) 잠재노출량 및 키워드 잡힌 개수 계산
-  const potentialExposure = transformedData.reduce((total, tracker) => {
-    return total + (tracker.keyword_analytics.daily_first_page_exposure ?? 0);
-  }, 0) * 0.2;
+  if (!fetchAll) {
+    return {
+      data: transformedData,
+    };
+  }
 
-  const todayCatchCount = transformedData.filter((tracker) => {
-    const todayResult = tracker.keyword_tracker_results[today];
-    return (todayResult?.catch_success ?? 0) > 0;
-  }).length;
+  const potentialExposureByDate: Record<string, number> = {};
+  const catchCountByDate: Record<string, number> = {};
 
-  const weekCatchCount = transformedData.filter((tracker) => {
-    const weekAgoResult = tracker.keyword_tracker_results[weekAgo];
-    return (weekAgoResult?.catch_success ?? 0) > 0;
-  }).length;
+  // 날짜별 `potentialExposure` 및 `catchCount` 계산
+  transformedData.forEach((tracker) => {
+    Object.keys(tracker.keyword_tracker_results).forEach((date) => {
+      const result = tracker.keyword_tracker_results[date];
+      const dailyExposure = (result?.catch_success ?? 0) *
+        (tracker.keyword_analytics.daily_search_volume ?? 0);
+
+      potentialExposureByDate[date] = (potentialExposureByDate[date] ?? 0) +
+        dailyExposure;
+      if ((result?.catch_success ?? 0) > 0) {
+        catchCountByDate[date] = (catchCountByDate[date] ?? 0) + 1;
+      }
+    });
+  });
 
   // 4) 최종 결과 반환
   return {
-    keyword_trackers: transformedData,
-    potential_exposure: potentialExposure,
-    today_catch_count: todayCatchCount,
-    week_catch_count: weekCatchCount,
+    data: transformedData,
+    potentialExposureByDate,
+    catchCountByDate,
   };
 });
 
@@ -280,7 +309,12 @@ export const fetchKeywordTrackerWithResults = cache(async (
 //       }
 //     }
 //   ],
-//   "potential_exposure": 60
-//   "today_catch_count": 1,
-//   "week_catch_count": 1
+//   "potentialExposureByDate": {
+//     "2024-12-10": 200,
+//     "2024-12-11": 100
+//   },
+//   "catchCountByDate": {
+//     "2024-12-10": 1,
+//     "2024-12-11": 1
+//   }
 // }

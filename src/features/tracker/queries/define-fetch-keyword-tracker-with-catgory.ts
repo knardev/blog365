@@ -9,11 +9,12 @@ import { createClient } from "@/utils/supabase/server";
  * @param serviceRole - Whether the request is made with a service role key
  * @returns Supabase query object
  */
-export const defineFetchKeywordTrackerWithCategoriesQuery = async (
+export const defineFetchKeywordTrackerWithCategoriesQuery = (
   projectId: string,
   serviceRole: boolean = false,
+  range?: { offset: number; limit: number },
 ) => {
-  const query = createClient(serviceRole)
+  let query = createClient(serviceRole)
     .from("keyword_trackers")
     .select(`
       *,
@@ -22,7 +23,13 @@ export const defineFetchKeywordTrackerWithCategoriesQuery = async (
       projects(slug)
     `)
     .eq("project_id", projectId)
-    .eq("delete_state", false);
+    .eq("delete_state", false)
+    .order("created_at", { ascending: true });
+
+  // 페이지네이션 추가
+  if (range) {
+    query = query.range(range.offset, range.offset + range.limit - 1);
+  }
 
   return query;
 };

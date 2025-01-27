@@ -1,22 +1,23 @@
 import React from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+// actions
 import { fetchBlog } from "@/features/blogs/actions/fetch-blogs";
 import { fetchProjectsBlogs } from "@/features/tracker/actions/fetch-projects-blogs";
 import { fetchKeywordCategories } from "@/features/setting/actions/fetch-keyword-categories";
+// components
 import { ProjectsBlogsSheet } from "@/features/tracker/components/projects-blogs-sheet";
 import { KeywordTrackerAddSheet } from "@/features/tracker/components/keyword-tracker-add-sheet";
-import { KeywordTrackerWithResultsResponse } from "@/features/tracker/types/types";
-import { StrictModeSwitch } from "./strict-mode-switch";
-import { ClipboardShareButton } from "./clipboard-share-button"; // 새로 만든 컴포넌트 import
+import { StrictModeSwitch } from "@/features/tracker/components/strict-mode-switch";
+import { ClipboardShareButton } from "@/features/tracker/components/clipboard-share-button"; // 새로 만든 컴포넌트 import
+import { KeywordTrackerStatisticsBoard } from "@/features/tracker/components/keyword-tracker-statistics-borad";
 
 export async function KeywordTrackerHeader({
   profileId,
   projectSlug,
-  fetchedData,
+  readonly = false,
 }: {
   profileId: string;
   projectSlug: string;
-  fetchedData: KeywordTrackerWithResultsResponse;
+  readonly?: boolean;
 }) {
   // Fetch supplementary data
   const [projectBlogs, availableBlogs, keywordCategories] = await Promise.all([
@@ -25,20 +26,9 @@ export async function KeywordTrackerHeader({
     fetchKeywordCategories(projectSlug),
   ]);
 
-  if (!projectBlogs || !fetchedData) {
+  if (!projectBlogs) {
     return null;
   }
-
-  // Extract data from fetchedData
-  const {
-    keyword_trackers: keywordTrackers,
-    potential_exposure,
-    today_catch_count,
-    week_catch_count,
-  } = fetchedData;
-
-  // Calculate the total number of keywords
-  const totalKeywords = keywordTrackers.length;
 
   const shareLink = `${process.env.NEXT_PUBLIC_SITE_URL}/share/${projectSlug}`;
 
@@ -62,49 +52,10 @@ export async function KeywordTrackerHeader({
         </div>
       </div>
       {/* Cards in a responsive grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
-        {/* Total Keywords Card */}
-        <Card className="shadow-md">
-          <CardHeader>
-            <CardTitle>전체 키워드</CardTitle>
-          </CardHeader>
-          <CardContent className="flex items-center justify-between">
-            <span className="text-2xl font-semibold">{totalKeywords}</span>
-          </CardContent>
-        </Card>
-
-        {/* Today's Caught Keywords */}
-        <Card className="shadow-md">
-          <CardHeader>
-            <CardTitle>오늘 잡힌 키워드</CardTitle>
-          </CardHeader>
-          <CardContent className="flex items-center justify-between">
-            <span className="text-2xl font-semibold">{today_catch_count}</span>
-          </CardContent>
-        </Card>
-
-        {/* Weekly Caught Keywords */}
-        <Card className="shadow-md">
-          <CardHeader>
-            <CardTitle>일주일 전 잡은 키워드</CardTitle>
-          </CardHeader>
-          <CardContent className="flex items-center justify-between">
-            <span className="text-2xl font-semibold">{week_catch_count}</span>
-          </CardContent>
-        </Card>
-
-        {/* Potential Exposure */}
-        <Card className="shadow-md">
-          <CardHeader>
-            <CardTitle>일 예상 노출량</CardTitle>
-          </CardHeader>
-          <CardContent className="flex items-center justify-between">
-            <span className="text-2xl font-semibold">
-              {potential_exposure.toFixed(0)} 명
-            </span>
-          </CardContent>
-        </Card>
-      </div>
+      <KeywordTrackerStatisticsBoard
+        projectSlug={projectSlug}
+        readonly={readonly}
+      />
     </div>
   );
 }

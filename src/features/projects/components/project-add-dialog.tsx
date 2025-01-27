@@ -53,8 +53,8 @@ export function ProjectAddDialog({
 
   // 다이얼로그가 마운트될 때 랜덤 slug 생성
   useEffect(() => {
-    generateAndCheckSlug();
-  }, []);
+    if (open) generateAndCheckSlug();
+  }, [open]);
 
   // 슬러그를 생성하고 중복 여부를 체크하는 함수
   const generateAndCheckSlug = async () => {
