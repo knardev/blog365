@@ -56,7 +56,7 @@ export interface BasicBlock {
 
 export interface SerpData {
   smartBlocks: SmartBlock[]; // fds-collection-root 등에서 추출한 스마트 블럭
-  popularBlocks: SmartBlock[]; // "인기글" 블럭
+  // popularBlocks: SmartBlock[]; // "인기글" 블럭
   basicBlocks: BasicBlock[]; // 일반 블럭
   popularTopics: PopularTopicItem[]; // "인기주제" 정보
 }
@@ -543,12 +543,12 @@ export async function fetchSerpResults(
   // 2) HTML 파싱 후, 각각의 블럭 추출
   const $ = cheerio.load(html);
   const smartBlocks = parseSmartBlocks($, url);
-  const popularBlocks = parsePopularBlocks($, url);
+  smartBlocks.push(...parsePopularBlocks($, url));
   const popularTopics = parsePopularTopics($);
   const basicBlocks = parseBasicBlocks($);
 
   // 3) 스마트블럭 / 인기블럭 에 대해서 더보기 버튼이 있으면, 추가 데이터 수집
-  for (const block of [...smartBlocks, ...popularBlocks]) {
+  for (const block of smartBlocks) {
     if (block.moreButtonRawLink) {
       console.log(`[INFO] Fetching additional data for block: ${block.title}`);
       // ZenRows를 사용하도록 수정한 함수
@@ -564,7 +564,6 @@ export async function fetchSerpResults(
   // 4) 결과 리턴
   return {
     smartBlocks,
-    popularBlocks,
     basicBlocks,
     popularTopics,
   };
@@ -588,11 +587,9 @@ export async function saveSerpResults(
     keyword_id: keywordId,
     date: today,
     smart_block_datas: serpData.smartBlocks,
-    popular_block_datas: serpData.popularBlocks,
     popular_topic_datas: serpData.popularTopics,
     basic_block_datas: serpData.basicBlocks,
     smart_blocks: serpData.smartBlocks.map((block) => block.title),
-    popular_blocks: serpData.popularBlocks.map((block) => block.title),
     popular_topics: serpData.popularTopics.map((topic) => topic.title),
   });
 
