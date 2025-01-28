@@ -1,35 +1,36 @@
 import React from "react";
-// actions
-import { fetchBlog } from "@/features/blogs/actions/fetch-blogs";
-import { fetchProjectsBlogs } from "@/features/tracker/actions/fetch-projects-blogs";
-import { fetchKeywordCategories } from "@/features/setting/actions/fetch-keyword-categories";
 // components
 import { ProjectsBlogsSheet } from "@/features/tracker/components/projects-blogs-sheet";
 import { KeywordTrackerAddSheet } from "@/features/tracker/components/keyword-tracker-add-sheet";
 import { StrictModeSwitch } from "@/features/tracker/components/strict-mode-switch";
-import { ClipboardShareButton } from "@/features/tracker/components/clipboard-share-button"; // 새로 만든 컴포넌트 import
+import { ClipboardShareButton } from "@/features/tracker/components/clipboard-share-button";
 import { KeywordTrackerStatisticsBoard } from "@/features/tracker/components/keyword-tracker-statistics-borad";
+// types
+import { Blogs } from "@/features/blogs/queries/define-fetch-blogs";
+import { ProjectsBlogsWithDetail } from "@/features/tracker/queries/define-fetch-projects-blogs";
+import { KeywordCategories } from "@/features/setting/queries/define-fetch-keyword-categories";
 
-export async function KeywordTrackerHeader({
-  profileId,
-  projectSlug,
-  readonly = false,
-}: {
-  profileId: string;
+interface KeywordTrackerHeaderProps {
   projectSlug: string;
-  readonly?: boolean;
-}) {
-  // Fetch supplementary data
-  const [projectBlogs, availableBlogs, keywordCategories] = await Promise.all([
-    fetchProjectsBlogs(projectSlug),
-    fetchBlog(profileId),
-    fetchKeywordCategories(projectSlug),
-  ]);
+  projectBlogs: ProjectsBlogsWithDetail[];
+  availableBlogs: Blogs;
+  keywordCategories: KeywordCategories;
+  potentialExposureByDate: Record<string, number> | undefined;
+  catchCountByDate: Record<string, number> | undefined;
+  totalKeywords: number;
+  todayCatchCount: number;
+}
 
-  if (!projectBlogs) {
-    return null;
-  }
-
+export function KeywordTrackerHeader({
+  projectSlug,
+  potentialExposureByDate,
+  catchCountByDate,
+  totalKeywords,
+  todayCatchCount,
+  projectBlogs,
+  availableBlogs,
+  keywordCategories,
+}: KeywordTrackerHeaderProps) {
   const shareLink = `${process.env.NEXT_PUBLIC_SITE_URL}/share/${projectSlug}`;
 
   return (
@@ -38,7 +39,6 @@ export async function KeywordTrackerHeader({
       <div className="flex justify-between items-center">
         <StrictModeSwitch />
         <div className="flex gap-2">
-          {/* 클립보드 공유 버튼 컴포넌트 사용 */}
           <ClipboardShareButton shareLink={shareLink} />
           <ProjectsBlogsSheet
             blogs={projectBlogs}
@@ -47,14 +47,17 @@ export async function KeywordTrackerHeader({
           />
           <KeywordTrackerAddSheet
             projectSlug={projectSlug}
-            keywordCategories={keywordCategories ?? []}
+            keywordCategories={keywordCategories}
           />
         </div>
       </div>
-      {/* Cards in a responsive grid */}
+      {/* Statistics Board */}
       <KeywordTrackerStatisticsBoard
         projectSlug={projectSlug}
-        readonly={readonly}
+        potentialExposureByDate={potentialExposureByDate}
+        catchCountByDate={catchCountByDate}
+        totalKeywords={totalKeywords}
+        todayCatchCount={todayCatchCount}
       />
     </div>
   );

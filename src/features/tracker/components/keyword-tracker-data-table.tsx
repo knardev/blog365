@@ -31,19 +31,19 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { generateColumns } from "@/features/tracker/components/columns";
 // actions
 import { fetchKeywordTrackerWithResults } from "@/features/tracker/actions/fetch-keyword-tracker-with-results";
-import { fetchTotalCount } from "@/features/tracker/actions/fetch-total-count";
 // quries
 import { KeywordCategories } from "@/features/setting/queries/define-fetch-keyword-categories";
 // types
-import {
-  KeywordTrackerTransformed,
-  KeywordTrackerWithResultsResponse,
-} from "@/features/tracker/types/types";
+import { KeywordTrackerTransformed } from "@/features/tracker/types/types";
 
 interface KeywordTrackerDataTableProps {
   projectSlug: string;
   allDates: string[];
   keywordCategories: KeywordCategories;
+  rows: KeywordTrackerTransformed[];
+  setRows: React.Dispatch<React.SetStateAction<KeywordTrackerTransformed[]>>;
+  totalCount: number;
+  loading: boolean;
   readonly?: boolean;
 }
 
@@ -51,12 +51,14 @@ export function KeywordTrackerDataTable({
   allDates,
   keywordCategories,
   projectSlug,
+  rows,
+  setRows,
+  totalCount,
+  loading,
   readonly = false,
 }: KeywordTrackerDataTableProps) {
   // [1] 정렬 상태
   const [sorting, setSorting] = useState<SortingState>([]);
-  // [2] 불러온 데이터 누적
-  const [rows, setRows] = useState<KeywordTrackerTransformed[]>([]);
   // [3] 전체 개수
   const totalCountRef = useRef(0);
   // [4] 현재 offset
@@ -65,11 +67,8 @@ export function KeywordTrackerDataTable({
   const [hasNextPage, setHasNextPage] = useState(true);
   // [6] 로딩 중 상태
   const [isFetching, setIsFetching] = useState(false);
-  // [7] 초기 로딩 상태
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
   // 엄격 모드
   const strictMode = useRecoilValue(strictModeState);
-  const isFirstLoad = useRef(true);
 
   // Table states
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -104,25 +103,12 @@ export function KeywordTrackerDataTable({
       console.error("Failed to load next page:", error);
     } finally {
       setIsFetching(false);
-      setIsInitialLoad(false);
     }
   }, [projectSlug, strictMode, isFetching, hasNextPage]);
 
   useEffect(() => {
-    const initializeData = async () => {
-      const count = await fetchTotalCount({ projectSlug });
-      totalCountRef.current = count ?? 0;
-
-      if (count > 0) {
-        loadNextPage();
-      }
-    };
-
-    if (isFirstLoad.current) {
-      initializeData();
-      isFirstLoad.current = false;
-    }
-  }, [loadNextPage, projectSlug]);
+    totalCountRef.current = totalCount;
+  }, [totalCount]);
 
   const columns = useMemo(
     () => generateColumns(allDates, keywordCategories, projectSlug, readonly),
@@ -177,7 +163,7 @@ export function KeywordTrackerDataTable({
   //   overscan: 5,
   // });
 
-  if (isInitialLoad) {
+  if (loading) {
     const columns = 4;
     const rows = 10;
     return (
@@ -336,7 +322,7 @@ export function KeywordTrackerDataTable({
                     })}
                   </TableRow>
                 ))
-              : !isInitialLoad && (
+              : !loading && (
                   <TableRow>
                     <TableCell
                       colSpan={columns.length}

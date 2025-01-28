@@ -43,53 +43,27 @@ import { getTodayInKST, getYesterdayInKST } from "@/utils/date";
 
 interface KeywordTrackerStatisticsBoardProps {
   projectSlug: string;
+  potentialExposureByDate: Record<string, number> | undefined;
+  catchCountByDate: Record<string, number> | undefined;
+  totalKeywords: number;
+  todayCatchCount: number;
   readonly?: boolean;
 }
 
 export function KeywordTrackerStatisticsBoard({
-  projectSlug,
+  potentialExposureByDate,
+  catchCountByDate,
+  totalKeywords,
+  todayCatchCount,
   readonly,
 }: KeywordTrackerStatisticsBoardProps) {
   const today = getYesterdayInKST();
-  const [timeRangeExposure, setTimeRangeExposure] = useState("7d");
-  const [timeRangeCatch, setTimeRangeCatch] = useState("7d");
-  const [potentialExposureByDate, setPotentialExposureByDate] = useState<
-    Record<string, number> | undefined
-  >({});
-  const [catchCountByDate, setCatchCountByDate] = useState<
-    Record<string, number> | undefined
-  >({});
-  const [totalKeywords, setTotalKeywords] = useState(0);
-  const [todayCatchCount, setTodayCatchCount] = useState(0);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const {
-          data,
-          potentialExposureByDate,
-          catchCountByDate: _catchCountByDate,
-        } = await fetchKeywordTrackerWithResults({
-          projectSlug,
-          fetchAll: true,
-        });
-        setPotentialExposureByDate(potentialExposureByDate);
-        setCatchCountByDate(_catchCountByDate);
-        setTotalKeywords(data.length);
-        if (_catchCountByDate)
-          setTodayCatchCount(_catchCountByDate[today] ?? 0);
-      } catch (error) {
-        console.error("Error fetching keyword tracker data:", error);
-      }
-    };
-
-    fetchData();
-  }, []);
+  const [timeRange, setTimeRange] = useState("7d");
 
   const potentialExposureData = useMemo(() => {
-    const daysToSubtract = timeRangeExposure === "30d" ? 30 : 7;
-    const todayKST = new Date(`${today}T09:00:00+09:00`); // KST 기준 오늘
-    const startDateKST = new Date(todayKST); // 시작 날짜 계산
+    const daysToSubtract = timeRange === "30d" ? 30 : 7;
+    const todayKST = new Date(`${today}T09:00:00+09:00`);
+    const startDateKST = new Date(todayKST);
     startDateKST.setDate(startDateKST.getDate() - daysToSubtract);
 
     if (!potentialExposureByDate) {
@@ -99,19 +73,19 @@ export function KeywordTrackerStatisticsBoard({
     return Object.keys(potentialExposureByDate)
       .sort((a, b) => new Date(a).getTime() - new Date(b).getTime())
       .filter((date) => {
-        const dateInKST = new Date(`${date}T00:00:00+09:00`); // KST로 변환
+        const dateInKST = new Date(`${date}T00:00:00+09:00`);
         return dateInKST >= startDateKST && dateInKST <= todayKST;
       })
       .map((date) => ({
         date,
         potentialExposure: potentialExposureByDate[date],
       }));
-  }, [timeRangeExposure, potentialExposureByDate, today]);
+  }, [timeRange, potentialExposureByDate, today]);
 
   const catchCountData = useMemo(() => {
-    const daysToSubtract = timeRangeCatch === "30d" ? 30 : 7;
-    const todayKST = new Date(`${today}T09:00:00+09:00`); // KST 기준 오늘
-    const startDateKST = new Date(todayKST); // 시작 날짜 계산
+    const daysToSubtract = timeRange === "30d" ? 30 : 7;
+    const todayKST = new Date(`${today}T09:00:00+09:00`);
+    const startDateKST = new Date(todayKST);
     startDateKST.setDate(startDateKST.getDate() - daysToSubtract);
 
     if (!catchCountByDate) {
@@ -122,13 +96,13 @@ export function KeywordTrackerStatisticsBoard({
       .sort((a, b) => new Date(a).getTime() - new Date(b).getTime())
       .filter((date) => {
         const currentDate = new Date(date);
-        return currentDate >= startDateKST && currentDate <= todayKST; // 오늘 포함
+        return currentDate >= startDateKST && currentDate <= todayKST;
       })
       .map((date) => ({
         date,
         caughtKeywords: catchCountByDate[date],
       }));
-  }, [timeRangeCatch, catchCountByDate]);
+  }, [timeRange, catchCountByDate]);
 
   const radialData = useMemo(() => {
     const percentage = (todayCatchCount / totalKeywords) * 100;
@@ -155,18 +129,34 @@ export function KeywordTrackerStatisticsBoard({
   const areaChartConfig = {
     potentialExposure: {
       label: "노출량(명)",
-      color: "hsl(var(--chart-1))", // Potential Exposure 스타일
+      color: "hsl(var(--chart-1))",
     },
     caughtKeywords: {
-      label: "잡힌 키워드",
-      color: "hsl(var(--chart-2))", // Caught Keywords 스타일
+      label: "잡은 키워드",
+      color: "hsl(var(--chart-2))",
     },
   } satisfies ChartConfig;
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-5 gap-3">
+    <div className="grid grid-cols-1 lg:grid-cols-9 gap-3">
+      {/* Unified Select */}
+      <div className="col-span-1 pl-1">
+        <div className="flex flex-col gap-2">
+          <h4 className="text-sm font-bold">기간 선택</h4>
+          <Select value={timeRange} onValueChange={setTimeRange}>
+            <SelectTrigger className="w-[120px]">
+              <SelectValue placeholder="최근 기간" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="7d">최근 7일</SelectItem>
+              <SelectItem value="30d">최근 30일</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
       {/* Radial Bar Chart */}
-      <Card className="col-span-1">
+      <Card className="col-span-2 rounded-md">
         <CardHeader>
           <CardTitle>오늘 성공한 키워드</CardTitle>
           <CardDescription>전체 키워드 | {totalKeywords}</CardDescription>
@@ -228,35 +218,19 @@ export function KeywordTrackerStatisticsBoard({
       </Card>
 
       {/* Potential Exposure Area Chart */}
-      <Card className="col-span-2">
-        <CardHeader className="flex items-center justify-between flex-row">
-          <div className="flex flex-col gap-2 mr-4">
-            <CardTitle>
-              일별 예상 노출량 | 오늘{" "}
-              {potentialExposureByDate
-                ? potentialExposureByDate[today]
-                  ? potentialExposureByDate[today] + "명"
-                  : 0
-                : 0}
-            </CardTitle>
-            <CardDescription className="break-keep">
-              첫 페이지 예상 노출량을 보여줍니다.
-            </CardDescription>
-          </div>
-          <Select
-            value={timeRangeExposure}
-            onValueChange={setTimeRangeExposure}
-          >
-            <SelectTrigger className="w-[120px]">
-              <SelectValue placeholder="최근 기간" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="7d">최근 7일</SelectItem>
-              <SelectItem value="30d">최근 30일</SelectItem>
-            </SelectContent>
-          </Select>
+      <Card className="col-span-3 rounded-md">
+        <CardHeader>
+          <CardTitle>
+            일별 예상 노출량 | 오늘{" "}
+            {potentialExposureByDate
+              ? potentialExposureByDate[today]
+                ? potentialExposureByDate[today] + "명"
+                : 0
+              : 0}
+          </CardTitle>
+          <CardDescription>첫 페이지 예상 노출량을 보여줍니다.</CardDescription>
         </CardHeader>
-        <CardContent className="p-3 px-2 pt-4 sm:px-3 sm:pt-4">
+        <CardContent>
           <ChartContainer
             className="aspect-auto h-[150px] w-full"
             config={areaChartConfig}
@@ -329,30 +303,19 @@ export function KeywordTrackerStatisticsBoard({
       </Card>
 
       {/* Caught Keywords Area Chart */}
-      <Card className="col-span-2">
-        <CardHeader className="flex items-center justify-between flex-row">
-          <div>
-            <CardTitle>
-              일별 잡힌 키워드 수 | 오늘{" "}
-              {catchCountByDate
-                ? catchCountByDate[today]
-                  ? catchCountByDate[today] + "개"
-                  : 0
-                : 0}
-            </CardTitle>
-            <CardDescription>일별 잡힌 키워드 수를 보여줍니다.</CardDescription>
-          </div>
-          <Select value={timeRangeCatch} onValueChange={setTimeRangeCatch}>
-            <SelectTrigger className="w-[120px]">
-              <SelectValue placeholder="최근 기간" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="7d">최근 7일</SelectItem>
-              <SelectItem value="30d">최근 30일</SelectItem>
-            </SelectContent>
-          </Select>
+      <Card className="col-span-3 rounded-md">
+        <CardHeader>
+          <CardTitle>
+            일별 잡은 키워드 수 | 오늘{" "}
+            {catchCountByDate
+              ? catchCountByDate[today]
+                ? catchCountByDate[today] + "개"
+                : 0
+              : 0}
+          </CardTitle>
+          <CardDescription>일별 잡힌 키워드 수를 보여줍니다.</CardDescription>
         </CardHeader>
-        <CardContent className="px-2 pt-4 sm:px-3 sm:pt-4">
+        <CardContent>
           <ChartContainer
             className="aspect-auto h-[150px] w-full"
             config={areaChartConfig}

@@ -11,7 +11,6 @@ export async function fetchTotalCount(
     projectSlug: string;
   },
 ): Promise<number> {
-  console.log("project slug:", projectSlug);
   const { data: projectData, error: projectError } = await createClient()
     .from("projects")
     .select("id")
