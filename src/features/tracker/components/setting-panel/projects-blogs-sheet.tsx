@@ -111,7 +111,7 @@ export function ProjectsBlogsSheet({
     <Sheet>
       <SheetTrigger asChild>
         <Button variant="outline" size="sm">
-          블로그 설정
+          추적 블로그 설정
         </Button>
       </SheetTrigger>
       <SheetContent className="flex flex-col">

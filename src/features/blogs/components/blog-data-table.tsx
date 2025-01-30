@@ -1,6 +1,11 @@
 "use client";
 
-import * as React from "react";
+import React, { useEffect, useMemo, useState } from "react";
+// hooks
+import { useRecoilState } from "recoil";
+// atoms
+import { blogsWithAnalyticsAtom } from "@/features/blogs/atoms/states";
+// components
 import {
   ColumnFiltersState,
   SortingState,
@@ -20,8 +25,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { BlogsWithAnalytics } from "@/features/blogs/types/types";
 import { generateColumns } from "@/features/blogs/components/columns"; // Import the column generator
+// types
+import { BlogsWithAnalytics } from "@/features/blogs/types/types";
 
 interface BlogsDataTableProps {
   data: BlogsWithAnalytics[];
@@ -30,19 +36,25 @@ interface BlogsDataTableProps {
 }
 
 export function BlogsDataTable({ data, allDates }: BlogsDataTableProps) {
-  const columns = React.useMemo(() => generateColumns(allDates), [allDates]);
+  // Recoil state
+  const [blogsWithAnalytics, setBlogsWithAnalytics] = useRecoilState(
+    blogsWithAnalyticsAtom
+  );
+
+  useEffect(() => {
+    setBlogsWithAnalytics(data);
+  }, [data]);
+
+  const columns = useMemo(() => generateColumns(allDates), [allDates]);
 
   // Table states
-  const [sorting, setSorting] = React.useState<SortingState>([]);
-  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
-    []
-  );
-  const [columnVisibility, setColumnVisibility] =
-    React.useState<VisibilityState>({});
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
 
   // Initialize the table
   const table = useReactTable({
-    data,
+    data: blogsWithAnalytics,
     columns,
     defaultColumn: {
       size: 100, // base size for columns without explicit size

@@ -2,7 +2,6 @@
 
 import { defineUpdateKeywordQuery } from "@/features/tracker/queries/define-update-keyword-tracker";
 import { TablesUpdate } from "@/types/database.types";
-import { revalidatePath } from "next/cache";
 
 /**
  * Action to update a keyword tracker
@@ -23,5 +22,5 @@ export async function updateKeywordTracker(
 
   console.log("Keyword tracker updated successfully:", data);
 
-  return true;
+  return data;
 }

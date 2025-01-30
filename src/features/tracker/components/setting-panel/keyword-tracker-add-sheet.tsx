@@ -278,7 +278,7 @@ export function KeywordTrackerAddSheet({
           <DialogContent>
             <DialogHeader>
               <DialogTitle>키워드 데이터를 스크래핑중입니다..</DialogTitle>
-              <DialogDescription>
+              <DialogDescription className="break-keep">
                 {newKeywordTrackers.length} 개의 키워드 데이터를 스크래핑
                 중입니다. <br />
                 많은 양의 데이터일수록 시간이 소요될 수 있습니다. 중간에
