@@ -10,15 +10,13 @@ import { TablesUpdate } from "@/types/database.types";
  * @param projectSlug - The slug of the project
  * @param blogId - The ID of the blog to update
  * @param updates - The updates to apply (e.g., active: boolean)
- * @param revalidateTargetPath - (Optional) The path to revalidate after updating
  * @returns The result of the update or an error if it occurs
  */
 export async function updateProjectsBlogs(
   projectSlug: string,
   blogId: string,
   updates: TablesUpdate<"projects_blogs">,
-  revalidateTargetPath?: string
-): Promise<null> {
+): Promise<boolean> {
   // Fetch the project ID using the provided slug
   const { data: projectData, error: projectError } = await createClient()
     .from("projects")
@@ -41,7 +39,7 @@ export async function updateProjectsBlogs(
   const { error: updateError } = await defineUpdateProjectsBlogsQuery(
     projectId,
     blogId,
-    updates
+    updates,
   );
 
   if (updateError) {
@@ -49,9 +47,7 @@ export async function updateProjectsBlogs(
     throw new Error("Failed to update blog in project");
   }
 
-  if (revalidateTargetPath) {
-    revalidatePath(revalidateTargetPath);
-  }
+  // revalidatePath("/(dashboard)/[project_slug]/tracker");
 
-  return null;
+  return true;
 }

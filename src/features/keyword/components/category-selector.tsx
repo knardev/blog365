@@ -44,11 +44,7 @@ export function CategorySelector({
     setIsSaving(true);
 
     try {
-      await updateKeywordTracker(
-        trackerId,
-        { category_id: categoryId },
-        `/${projectSlug}/keyword`
-      );
+      await updateKeywordTracker(trackerId, { category_id: categoryId });
     } catch (error) {
       console.error("Failed to update category:", error);
       setSelectedCategory(currentCategoryId); // Rollback on error

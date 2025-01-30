@@ -32,7 +32,7 @@ export async function processBlogVisitorData(
     console.log("[INFO] Fetching blog_id for given blog_slug");
     const { data: blogData, error: blogError } = await supabaseClient
       .from("blogs")
-      .select("id, is_influencer")
+      .select("id, is_influencer, influencer_connected_blog_slug")
       .eq("id", id)
       .single();
 
@@ -41,17 +41,20 @@ export async function processBlogVisitorData(
       return { success: false, error: "Blog not found" };
     }
 
-    if (blogData.is_influencer) {
-      console.log("[INFO] Skipping influencer blog");
-      return { success: true, message: "Influencer blog" };
-    }
+    // if (blogData.is_influencer) {
+    //   console.log("[INFO] Skipping influencer blog");
+    //   return { success: true, message: "Influencer blog" };
+    // }
 
+    const finalBlogSlug = blogData.is_influencer
+      ? blogData.influencer_connected_blog_slug
+      : blogSlug;
     const blogId = blogData.id;
     console.log(`[INFO] Found blog_id: ${blogId}`);
 
     // Fetch XML data via ZenRows
     const xmlUrl = `https://blog.naver.com/NVisitorgp4Ajax.naver?blogId=${
-      encodeURIComponent(blogSlug)
+      encodeURIComponent(finalBlogSlug)
     }`;
     console.log(`[INFO] Fetching XML data via ZenRows: ${xmlUrl}`);
 

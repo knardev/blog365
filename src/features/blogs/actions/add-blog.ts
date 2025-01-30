@@ -1,8 +1,9 @@
 "use server";
 
 import { createClient } from "@/utils/supabase/server";
-import { defineAddBlogQuery } from "../queries/define-add-blog";
-import { revalidatePath } from "next/cache";
+import { defineAddBlogQuery } from "@/features/blogs/queries/define-add-blog";
+// types
+import { AddBlog } from "@/features/blogs/queries/define-add-blog";
 
 /**
  * Action to create a new blog
@@ -17,14 +18,14 @@ export async function addBlog({
   blogName,
   blogSlug,
   isInfluencer,
-  revalidateTargetPath,
+  connectedBlogSlug,
 }: {
   profileId: string;
   blogName: string;
   blogSlug: string;
   isInfluencer: boolean;
-  revalidateTargetPath?: string;
-}): Promise<void> {
+  connectedBlogSlug?: string;
+}): Promise<AddBlog> {
   // Ensure that the slug is unique
   const { data: existingBlog, error: fetchError } = await createClient()
     .from("blogs")
@@ -47,17 +48,12 @@ export async function addBlog({
     blogName,
     blogSlug,
     isInfluencer,
+    connectedBlogSlug,
   );
 
   if (error) {
     console.error("Error adding blog:", error);
     throw new Error("Failed to add blog");
   }
-
-  // Revalidate the target path if provided
-  if (revalidateTargetPath) {
-    revalidatePath(revalidateTargetPath);
-  }
-
-  console.log("Blog added successfully:", data);
+  return data;
 }

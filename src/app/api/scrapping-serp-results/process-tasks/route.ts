@@ -44,10 +44,6 @@ async function serpResultExists(keywordId: string): Promise<boolean> {
   return !!data; // data 있으면 true
 }
 
-async function delay(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 export async function GET(request: Request) {
   // await delay(1500); // 1초 대기
 

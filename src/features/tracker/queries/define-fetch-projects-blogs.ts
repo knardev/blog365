@@ -27,7 +27,7 @@ export const defineFetchProjectsBlogsQuery = (projectId: string) => {
       )
     `)
     .eq("project_id", projectId)
-    .order("created_at", { ascending: true });
+    .order("active", { ascending: false });
 };
 
 // 타입 추론 적용

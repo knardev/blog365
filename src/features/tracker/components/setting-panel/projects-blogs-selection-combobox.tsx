@@ -43,7 +43,7 @@ export function ProjectBlogSelectionCombobox({
   )?.blog_slug;
 
   const handleAddBlog = async (blogId: string) => {
-    await addProjectsBlogs(projectSlug, blogId, `/${projectSlug}/tracker`);
+    await addProjectsBlogs(projectSlug, blogId);
   };
 
   const handleAdd = async () => {

@@ -5,7 +5,7 @@ import { createClient } from "@/utils/supabase/server";
  * Fetch keywords data with optional filters
  * @returns Supabase query to fetch keywords
  */
-export const defineFetchKeywords = async () => {
+export const defineFetchKeywords = () => {
   // Fetch keywords
   const query = createClient()
     .from("keywords")
@@ -18,4 +18,6 @@ export const defineFetchKeywords = async () => {
 };
 
 // Type for the query result
-export type Keywords = QueryData<ReturnType<typeof defineFetchKeywords>>[number];
+export type Keywords = QueryData<
+  ReturnType<typeof defineFetchKeywords>
+>[number];

@@ -12,9 +12,9 @@ import { ProjectsBlogsWithDetail } from "../queries/define-fetch-projects-blogs"
  */
 
 export async function fetchProjectsBlogs(
-  projectSlug: string
+  projectSlug: string,
 ): Promise<ProjectsBlogsWithDetail[] | null> {
-// ): Promise<ProjectBlogWithDetails[] | null> {
+  // ): Promise<ProjectBlogWithDetails[] | null> {
   // Fetch the project ID using the provided slug
   const { data: projectData, error: projectError } = await createClient()
     .from("projects")
@@ -32,19 +32,20 @@ export async function fetchProjectsBlogs(
   // Fetch projects_blogs data
   const query = await defineFetchProjectsBlogsQuery(projectId);
   const { data, error } = query;
+  // console.log("data", data);
 
   if (error) {
     console.error("Error fetching projects_blogs data:", error);
     throw new Error("Failed to fetch projects_blogs data");
   }
 
-//   // Transform data if needed
-//   const transformedData: ProjectBlogWithDetails[] = data.map((projectBlog) => ({
-//     ...projectBlog,
-//     isActive: projectBlog.active, // Example transformation
-//     projectName: projectBlog.projects?.name ?? "Unnamed Project",
-//     blogName: projectBlog.blogs?.name ?? "Unnamed Blog",
-//   }));
+  //   // Transform data if needed
+  //   const transformedData: ProjectBlogWithDetails[] = data.map((projectBlog) => ({
+  //     ...projectBlog,
+  //     isActive: projectBlog.active, // Example transformation
+  //     projectName: projectBlog.projects?.name ?? "Unnamed Project",
+  //     blogName: projectBlog.blogs?.name ?? "Unnamed Blog",
+  //   }));
 
   return data;
 }

@@ -64,10 +64,10 @@ export default async function RootLayout({
                 <main className="overflow-auto flex flex-1 p-4">
                   {children}
                 </main>
-                <Toaster />
               </SidebarInset>
             </SidebarProvider>
           </ThemeProvider>
+          <Toaster />
         </body>
       </Providers>
     </html>

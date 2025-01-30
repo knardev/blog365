@@ -4,27 +4,26 @@ import { createClient } from "@/utils/supabase/server";
 import { defineAddKeyword } from "@/features/keyword/queries/define-add-keyword";
 import { defineFilterKeyword } from "@/features/keyword/queries/define-filter-keyword";
 import { defineAddKeywordTrackerQuery } from "@/features/tracker/queries/define-add-keyword-tracker";
-import { revalidatePath } from "next/cache";
+import { defineFetchSingleKeywordTrackerQuery } from "@/features/tracker/queries/define-fetch-single-keyword-tracker";
+// types
+import { AddKeywordTracker } from "@/features/tracker/queries/define-add-keyword-tracker";
 
 /**
  * Action to add multiple keywords tracker
  * @param projectSlug - The slug of the project
  * @param keywords - A comma-separated string of keywords
  * @param categoryId - (Optional) The ID of the category to associate with the tracker
- * @param revalidateTargetPath - (Optional) The path to revalidate after adding the tracker
  * @returns The result of the addition or an error if it occurs
  */
 export async function addKeywordTracker({
   projectSlug,
   keywords,
   categoryId,
-  revalidateTargetPath,
 }: {
   projectSlug: string;
   keywords: string; // 콤마로 구분된 문자열
   categoryId?: string;
-  revalidateTargetPath?: string;
-}): Promise<void> {
+}): Promise<AddKeywordTracker[]> {
   // 1) 프로젝트 ID 찾기
   const { data: projectData, error: projectError } = await createClient()
     .from("projects")
@@ -52,6 +51,7 @@ export async function addKeywordTracker({
     .filter((k) => k.length > 0); // 빈 문자열 제거
 
   // 3) 키워드 배열을 순회하면서 기존 로직 수행
+  const keywordTrackerList = [];
   for (const keyword of keywordList) {
     // Step 1: Try to filter the keyword by name
     const { data: filteredKeyword, error: filterError } =
@@ -63,6 +63,19 @@ export async function addKeywordTracker({
 
     let keywordId = filteredKeyword?.id;
 
+    // Step 1: Check if the keyword tracker already exists
+    if (keywordId) {
+      const { data: existingKeywordTracker, error } =
+        await defineFetchSingleKeywordTrackerQuery(
+          projectId,
+          keywordId,
+        );
+      if (existingKeywordTracker) {
+        console.log("[Info] Keyword tracker already exists.");
+        continue;
+      }
+    }
+
     // Step 2: If the keyword does not exist, add it
     if (!keywordId) {
       const { data: addedKeyword, error: addKeywordError } =
@@ -72,10 +85,6 @@ export async function addKeywordTracker({
         throw new Error("Failed to add keyword");
       }
       keywordId = addedKeyword[0]?.id;
-    }
-
-    if (!keywordId) {
-      throw new Error("Keyword ID could not be retrieved or added.");
     }
 
     // Step 3: Add the keyword tracker
@@ -91,10 +100,9 @@ export async function addKeywordTracker({
     }
 
     console.log("Keyword tracker added successfully:", data);
+    keywordTrackerList.push(data);
   }
+  return keywordTrackerList;
 
-  // 4) 모든 키워드 처리 후 revalidate
-  if (revalidateTargetPath) {
-    revalidatePath(revalidateTargetPath);
-  }
+  // revalidatePath("/(main)/(dashboard)/[project_slug]/tracker");
 }

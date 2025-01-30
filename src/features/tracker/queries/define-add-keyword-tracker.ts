@@ -11,7 +11,7 @@ import { createClient } from "@/utils/supabase/server";
 export const defineAddKeywordTrackerQuery = (
   projectId: string,
   keywordId: string,
-  categoryId?: string
+  categoryId?: string,
 ) => {
   return createClient()
     .from("keyword_trackers")
@@ -21,7 +21,11 @@ export const defineAddKeywordTrackerQuery = (
       category_id: categoryId || null,
       active: true,
     })
-    .select();
+    .select(`
+      *,
+      keywords(*)
+    `)
+    .single();
 };
 
 export type AddKeywordTracker = QueryData<

@@ -253,12 +253,14 @@ interface SortableHeaderProps<TData> {
   column: Column<TData, unknown>; // Accepts a column object directly
   title: string; // The title to display in the header
   shoWIcon?: boolean; // Whether to show the sorting icon
+  isMulti?: boolean; // Whether the column supports multi-sorting
 }
 
 const SortableHeader = <TData,>({
   column,
   title,
   shoWIcon = true,
+  isMulti = false,
 }: SortableHeaderProps<TData>) => {
   const isSorted = column.getIsSorted(); // "asc", "desc", or false
 
@@ -266,11 +268,11 @@ const SortableHeader = <TData,>({
     // Check the current sorting state
     console.log(column.getIsSorted());
     if (column.getIsSorted() === "desc") {
-      column.toggleSorting(false); // Switch to "asc"
+      column.toggleSorting(false, isMulti); // Switch to "asc"
     } else if (column.getIsSorted() === "asc") {
       column.clearSorting(); // Remove sorting
     } else {
-      column.toggleSorting(true); // Switch to "desc"
+      column.toggleSorting(true, isMulti); // Switch to "desc"
     }
   };
 

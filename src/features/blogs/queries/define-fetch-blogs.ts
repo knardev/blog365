@@ -10,11 +10,7 @@ export const defineFetchBlogs = async (profileId: string) => {
   // Fetch blogs and their analytics
   const query = createClient()
     .from("blogs")
-    .select(
-      `
-      *
-    `
-    )
+    .select(`*`)
     .eq("owner_profile_id", profileId)
     .order("created_at", { ascending: true });
 
