@@ -7,11 +7,13 @@ import { createClient } from "@/utils/supabase/server";
  */
 export async function fetchTotalCount(
   { serviceRole = false, projectSlug }: {
-    serviceRole?: boolean;
     projectSlug: string;
+    serviceRole?: boolean;
   },
 ): Promise<number> {
-  const { data: projectData, error: projectError } = await createClient()
+  const { data: projectData, error: projectError } = await createClient(
+    serviceRole,
+  )
     .from("projects")
     .select("id")
     .eq("slug", projectSlug)

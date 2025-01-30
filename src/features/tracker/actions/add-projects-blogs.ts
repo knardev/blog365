@@ -2,8 +2,9 @@
 
 import { createClient } from "@/utils/supabase/server";
 import { defineAddProjectsBlogsQuery } from "../queries/define-add-projects-blogs";
-import { ProjectsBlogsInsert } from "../types/types";
+
 import { revalidatePath } from "next/cache";
+import { AddProjectsBlogs } from "@/features/tracker/queries/define-add-projects-blogs";
 
 /**
  * Action to add a new blog to a project
@@ -14,8 +15,7 @@ import { revalidatePath } from "next/cache";
 export async function addProjectsBlogs(
   projectSlug: string,
   blogId: string,
-  revalidateTargetPath?: string
-): Promise<ProjectsBlogsInsert[] | null> {
+): Promise<AddProjectsBlogs> {
   // Fetch the project ID using the provided slug
   const { data: projectData, error: projectError } = await createClient()
     .from("projects")
@@ -42,8 +42,6 @@ export async function addProjectsBlogs(
     throw new Error("Failed to add blog to project");
   }
 
-  if (revalidateTargetPath) {
-    revalidatePath(revalidateTargetPath);
-  }
+  // revalidatePath("/(dashboard)/[project_slug]/tracker");
   return data;
 }

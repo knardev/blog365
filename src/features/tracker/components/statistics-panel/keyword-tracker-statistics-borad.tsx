@@ -1,6 +1,8 @@
 "use client";
 
+// hooks
 import React, { useState, useMemo, useEffect } from "react";
+import { useTrackerData } from "@/features/tracker/hooks/use-tracker-data";
 // components
 import {
   Area,
@@ -36,45 +38,121 @@ import {
   ChartLegend,
   ChartLegendContent,
 } from "@/components/ui/chart";
-// actions
-import { fetchKeywordTrackerWithResults } from "@/features/tracker/actions/fetch-keyword-tracker-with-results";
+import {
+  BaseMultiSelector,
+  Option,
+} from "@/components/custom-ui/base-multi-select";
 // utils
 import { getTodayInKST, getYesterdayInKST } from "@/utils/date";
+// types
+import { MergedDataRow } from "@/features/tracker/types/types";
+import { KeywordCategories } from "@/features/setting/queries/define-fetch-keyword-categories";
 
 interface KeywordTrackerStatisticsBoardProps {
   projectSlug: string;
-  potentialExposureByDate: Record<string, number> | undefined;
-  catchCountByDate: Record<string, number> | undefined;
-  totalKeywords: number;
-  todayCatchCount: number;
+  initialTrackerData: MergedDataRow[];
+  keywordCategories: KeywordCategories;
   readonly?: boolean;
 }
 
 export function KeywordTrackerStatisticsBoard({
-  potentialExposureByDate,
-  catchCountByDate,
-  totalKeywords,
-  todayCatchCount,
-  readonly,
+  projectSlug,
+  initialTrackerData,
+  keywordCategories,
+  readonly = false,
 }: KeywordTrackerStatisticsBoardProps) {
-  const today = getYesterdayInKST();
-  const [timeRange, setTimeRange] = useState("7d");
+  const { transformedData } = useTrackerData({
+    projectSlug,
+    initialRows: initialTrackerData,
+    totalCount: initialTrackerData.length,
+    readonly,
+    fetchAll: true,
+  });
 
+  const today = getTodayInKST();
+  const [timeRange, setTimeRange] = useState<"7d" | "30d">("7d");
+
+  const categoryOptions = useMemo<Option[]>(() => {
+    if (!keywordCategories) return [];
+    return keywordCategories.map((cat) => ({
+      value: cat.name ?? "",
+      label: cat.name ?? "",
+    }));
+  }, [keywordCategories]);
+
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+
+  /**
+   * 1) Filter trackers by category (if a category is selected).
+   *    This assumes you have some category info in your `transformedData`.
+   */
+  const filteredTrackers = useMemo(() => {
+    // If no category is selected, return all trackers
+    if (selectedCategories.length === 0) return transformedData;
+
+    return transformedData.filter((item) => {
+      // Ensure item.keyword_categories is not null
+      if (!item.keyword_categories?.name) return false;
+
+      // Check if this tracker belongs to any selected category
+      return selectedCategories.includes(item.keyword_categories.name);
+    });
+  }, [transformedData, selectedCategories]);
+
+  /**
+   * 2) Compute potentialExposureByDate & catchCountByDate from filtered trackers.
+   */
+  const { potentialExposureByDate, catchCountByDate } = useMemo(() => {
+    const _potentialExposureByDate: Record<string, number> = {};
+    const _catchCountByDate: Record<string, number> = {};
+
+    filteredTrackers.forEach((tracker) => {
+      const dailySearchVolume =
+        tracker.keyword_analytics?.daily_search_volume ?? 0;
+
+      Object.entries(tracker.keyword_tracker_results).forEach(
+        ([date, result]) => {
+          // (A) Calculate daily exposure
+          const dailyExposure = (result.catch_success ?? 0) * dailySearchVolume;
+          _potentialExposureByDate[date] =
+            (_potentialExposureByDate[date] ?? 0) + dailyExposure;
+
+          // (B) Calculate catch count
+          if ((result.catch_success ?? 0) > 0) {
+            _catchCountByDate[date] = (_catchCountByDate[date] ?? 0) + 1;
+          }
+        }
+      );
+    });
+
+    return {
+      potentialExposureByDate: _potentialExposureByDate,
+      catchCountByDate: _catchCountByDate,
+    };
+  }, [filteredTrackers]);
+
+  /**
+   * 3) For example, we can determine today's catch count from catchCountByDate
+   *    (You can also incorporate your time range logic if desired.)
+   */
+  const todayCatchCount = catchCountByDate[today] ?? 0;
+
+  /**
+   * 4) Then you can generate the final data for your charts based on `timeRange`.
+   */
   const potentialExposureData = useMemo(() => {
+    if (!potentialExposureByDate) return [];
+    // for example 7d or 30d back
     const daysToSubtract = timeRange === "30d" ? 30 : 7;
-    const todayKST = new Date(`${today}T09:00:00+09:00`);
-    const startDateKST = new Date(todayKST);
-    startDateKST.setDate(startDateKST.getDate() - daysToSubtract);
-
-    if (!potentialExposureByDate) {
-      return [];
-    }
+    const now = new Date(`${today}T09:00:00+09:00`);
+    const startDate = new Date(now);
+    startDate.setDate(startDate.getDate() - daysToSubtract);
 
     return Object.keys(potentialExposureByDate)
       .sort((a, b) => new Date(a).getTime() - new Date(b).getTime())
       .filter((date) => {
-        const dateInKST = new Date(`${date}T00:00:00+09:00`);
-        return dateInKST >= startDateKST && dateInKST <= todayKST;
+        const dateObj = new Date(`${date}T09:00:00+09:00`);
+        return dateObj >= startDate && dateObj <= now;
       })
       .map((date) => ({
         date,
@@ -83,38 +161,41 @@ export function KeywordTrackerStatisticsBoard({
   }, [timeRange, potentialExposureByDate, today]);
 
   const catchCountData = useMemo(() => {
+    if (!catchCountByDate) return [];
     const daysToSubtract = timeRange === "30d" ? 30 : 7;
-    const todayKST = new Date(`${today}T09:00:00+09:00`);
-    const startDateKST = new Date(todayKST);
-    startDateKST.setDate(startDateKST.getDate() - daysToSubtract);
-
-    if (!catchCountByDate) {
-      return [];
-    }
+    const now = new Date(`${today}T09:00:00+09:00`);
+    const startDate = new Date(now);
+    startDate.setDate(startDate.getDate() - daysToSubtract);
 
     return Object.keys(catchCountByDate)
       .sort((a, b) => new Date(a).getTime() - new Date(b).getTime())
       .filter((date) => {
-        const currentDate = new Date(date);
-        return currentDate >= startDateKST && currentDate <= todayKST;
+        const dateObj = new Date(`${date}T09:00:00+09:00`);
+        return dateObj >= startDate && dateObj <= now;
       })
       .map((date) => ({
         date,
         caughtKeywords: catchCountByDate[date],
       }));
-  }, [timeRange, catchCountByDate]);
+  }, [timeRange, catchCountByDate, today]);
 
+  // 7) Radial data: reflect the filtered trackers only
+  //    i.e., fraction of filtered trackers that we "caught" today
   const radialData = useMemo(() => {
-    const percentage = (todayCatchCount / totalKeywords) * 100;
+    const filteredTotal = filteredTrackers.length; // denominator
+    const filteredToday = todayCatchCount; // numerator
+    const percentage =
+      filteredTotal > 0 ? (filteredToday / filteredTotal) * 100 : 0;
+
     return [
       {
-        totalKeywords: totalKeywords,
-        percentage: percentage,
-        todayCatchCount: todayCatchCount,
+        totalKeywords: filteredTotal, // total in the filtered set
+        todayCatchCount: filteredToday,
+        percentage,
         fill: "hsl(var(--chart-1))",
       },
     ];
-  }, [todayCatchCount, totalKeywords]);
+  }, [filteredTrackers, todayCatchCount]);
 
   const radialChartConfig = {
     todayCatchCount: {
@@ -142,8 +223,11 @@ export function KeywordTrackerStatisticsBoard({
       {/* Unified Select */}
       <div className="col-span-1 pl-1">
         <div className="flex flex-col gap-2">
-          <h4 className="text-sm font-bold">기간 선택</h4>
-          <Select value={timeRange} onValueChange={setTimeRange}>
+          <h4 className="text-sm font-bold">그래프 설정</h4>
+          <Select
+            value={timeRange}
+            onValueChange={(value: "7d" | "30d") => setTimeRange(value)}
+          >
             <SelectTrigger className="w-[120px]">
               <SelectValue placeholder="최근 기간" />
             </SelectTrigger>
@@ -152,6 +236,14 @@ export function KeywordTrackerStatisticsBoard({
               <SelectItem value="30d">최근 30일</SelectItem>
             </SelectContent>
           </Select>
+          <BaseMultiSelector
+            options={categoryOptions}
+            values={selectedCategories} // the array of selected category slugs
+            onValuesChange={(newValues) => setSelectedCategories(newValues)}
+            placeholder="카테고리 선택"
+            maxBadges={1}
+            width="w-[120px]"
+          />
         </div>
       </div>
 
@@ -159,7 +251,9 @@ export function KeywordTrackerStatisticsBoard({
       <Card className="col-span-2 rounded-md">
         <CardHeader>
           <CardTitle>오늘 성공한 키워드</CardTitle>
-          <CardDescription>전체 키워드 | {totalKeywords}</CardDescription>
+          <CardDescription>
+            전체 키워드 | {radialData[0].totalKeywords}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <ChartContainer

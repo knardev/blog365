@@ -9,7 +9,7 @@ import { createClient } from "@/utils/supabase/server";
  */
 export const defineAddProjectsBlogsQuery = (
   projectId: string,
-  blogId: string
+  blogId: string,
 ) => {
   return createClient()
     .from("projects_blogs")
@@ -18,13 +18,27 @@ export const defineAddProjectsBlogsQuery = (
       blog_id: blogId,
       active: true,
     })
-    .select();
+    .select(`
+      *,
+      projects(
+        id,
+        name,
+        slug,
+        created_at
+      ),
+      blogs(
+        id,
+        name,
+        blog_slug,
+        owner_profile_id,
+        created_at
+      )
+    `);
 };
 
 export type AddProjectsBlogs = QueryData<
   ReturnType<typeof defineAddProjectsBlogsQuery>
 >;
-
 
 // Example Usage:
 // const result = await defineAddProjectsBlogsQuery("project-id", "blog-id");

@@ -27,7 +27,7 @@ import { Label, PolarRadiusAxis, RadialBar, RadialBarChart } from "recharts";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
 import { KeywordTrackerTransformed } from "@/features/tracker/types/types";
-import { CategorySelector } from "@/features/tracker/components/category-selector";
+import { CategorySelector } from "@/features/tracker/components/table-panel/category-selector";
 import { KeywordCategories } from "@/features/setting/queries/define-fetch-keyword-categories";
 import { KeywordCell } from "./keyword-cell";
 
@@ -53,6 +53,7 @@ export function generateColumns(
   // Static columns
   const staticColumns: ColumnDef<KeywordTrackerTransformed>[] = [
     {
+      id: "keywords.name",
       accessorKey: "keywords.name",
       header: ({ column }) => <SortableHeader column={column} title="키워드" />,
       cell: ({ row }) => (
@@ -62,6 +63,7 @@ export function generateColumns(
           trackerId={row.original.id} // Pass the tracker ID for deletion
         />
       ),
+      enableMultiSort: true,
       size: 100,
       meta: {
         isStickyColumn: true,
@@ -71,9 +73,10 @@ export function generateColumns(
       },
     },
     {
+      id: "keyword_categories.name",
       accessorKey: "keyword_categories.name",
       header: ({ column }) => (
-        <SortableHeader column={column} title="카테고리" />
+        <SortableHeader column={column} title="카테고리" isMulti />
       ),
       cell: ({ row }) => {
         const tracker = row.original;
@@ -94,6 +97,7 @@ export function generateColumns(
           />
         );
       },
+      enableMultiSort: true,
       size: 85,
       meta: {
         isStickyColumn: true,
@@ -102,9 +106,10 @@ export function generateColumns(
       },
     },
     {
+      id: "keyword_analytics.montly_search_volume",
       accessorKey: "keyword_analytics.montly_search_volume",
       header: ({ column }) => (
-        <SortableHeader column={column} title="월 검색량" />
+        <SortableHeader column={column} title="월 검색량" isMulti />
       ),
       cell: ({ row }) => {
         const analytics = row.original.keyword_analytics;
@@ -202,6 +207,7 @@ export function generateColumns(
           </HoverCard>
         );
       },
+      enableSorting: true,
       size: 100,
       meta: {
         isStickyColumn: true,
@@ -209,8 +215,8 @@ export function generateColumns(
         isStickyRow: true,
       },
     },
-
     {
+      id: "keyword_analytics.montly_issue_volume",
       accessorKey: "keyword_analytics.montly_issue_volume",
       header: ({ column }) => (
         <SortableHeader column={column} title="월 발행량" />
@@ -253,6 +259,7 @@ export function generateColumns(
           </HoverCard>
         );
       },
+      enableSorting: true,
       size: 100,
       meta: {
         isStickyColumn: true,
@@ -261,6 +268,7 @@ export function generateColumns(
       },
     },
     {
+      id: "keyword_analytics.daily_first_page_exposure",
       accessorKey: "keyword_analytics.daily_first_page_exposure",
       header: ({ column }) => (
         <SortableHeader column={column} title="일 노출량" />

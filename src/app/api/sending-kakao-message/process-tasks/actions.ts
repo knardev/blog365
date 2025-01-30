@@ -218,10 +218,8 @@ export async function sendKakaoMessageAction(
           {
             buttonType: "WL",
             buttonName: "자세히 보기",
-            linkMo:
-              `${process.env.NEXT_PUBLIC_SITE_URL}/${projectSlug}/tracker`,
-            linkPc:
-              `${process.env.NEXT_PUBLIC_SITE_URL}/${projectSlug}/tracker`,
+            linkMo: `${process.env.NEXT_PUBLIC_SITE_URL}/share/${projectSlug}`,
+            linkPc: `${process.env.NEXT_PUBLIC_SITE_URL}/share/${projectSlug}`,
           },
         ],
       },

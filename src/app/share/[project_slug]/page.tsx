@@ -1,11 +1,18 @@
 import { Metadata, ResolvingMetadata } from "next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { fetchProjectBySlug } from "@/features/projects/actions/fetch-project-by-slug";
-import { fetchKeywordTrackerWithResults } from "@/features/tracker/actions/fetch-keyword-tracker-with-results";
-import { fetchKeywordCategories } from "@/features/setting/actions/fetch-keyword-categories";
-import { KeywordTrackerDataTable } from "@/features/tracker/components/keyword-tracker-data-table";
+import { Suspense } from "react";
+import { redirect } from "next/navigation";
 import { subDays } from "date-fns";
 import { formatInTimeZone } from "date-fns-tz";
+// components
+import { KeywordTrackerDataTableLoader } from "@/features/tracker/components/table-panel/keyword-tracker-data-table-loader";
+import { KeywordTrackerStatisticsBoardLoader } from "@/features/tracker/components/statistics-panel/keyword-tracker-statistics-board-loader";
+import { StatisticsPanelFallback } from "@/features/tracker/components/statistics-panel/statistics-panel-fallback";
+import { TablePanelFallback } from "@/features/tracker/components/table-panel/table-panel-fallback";
+// actions
+import { getProfileData } from "@/features/common/actions/get-profile";
+import { fetchKeywordCategories } from "@/features/setting/actions/fetch-keyword-categories";
 
 export const revalidate = 3600;
 export const maxDuration = 60;
@@ -53,23 +60,14 @@ export default async function Page({
   };
 }) {
   // 프로젝트 정보 가져오기
+  const projectSlug = params.project_slug;
   const project = await fetchProjectBySlug(params.project_slug, true);
 
   if (!project) {
     return <div>데이터가 없습니다.</div>;
   }
 
-  // Fetch data. 공유용 페이지에서는 strictMode = false 또는 true 지정 가능
-  const [fetchedData, keywordCategories] = await Promise.all([
-    fetchKeywordTrackerWithResults(
-      params.project_slug,
-      undefined,
-      undefined,
-      false,
-      true
-    ),
-    fetchKeywordCategories(params.project_slug, true),
-  ]);
+  const categoriesResult = await fetchKeywordCategories(projectSlug);
 
   // 모든 날짜 생성 (지난 30일 예시)
   const KST = "Asia/Seoul";
@@ -79,85 +77,28 @@ export default async function Page({
     return formatInTimeZone(date, KST, "yyyy-MM-dd");
   });
 
-  if (!fetchedData) {
-    // 공유 페이지에서 데이터가 없으면 404 등 처리
-    return <div>데이터가 없습니다.</div>;
-  }
-
-  const {
-    keyword_trackers: keywordTrackers,
-    potential_exposure,
-    today_catch_count,
-    week_catch_count,
-  } = fetchedData;
-
-  const totalKeywords = keywordTrackers.length;
-
   return (
-    <div className="overflow-auto flex flex-1 flex-col">
-      <div className="flex flex-col space-y-4">
-        {/* 헤더에 프로젝트 이름 추가 */}
-        <h2 className="text-xl font-bold">
-          {project.name} | 상위노출 추적 결과
-        </h2>
-        <div className="w-full space-y-4">
-          {/* Cards in a responsive grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
-            {/* Total Keywords Card */}
-            <Card className="shadow-md">
-              <CardHeader>
-                <CardTitle>전체 키워드</CardTitle>
-              </CardHeader>
-              <CardContent className="flex items-center justify-between">
-                <span className="text-2xl font-semibold">{totalKeywords}</span>
-              </CardContent>
-            </Card>
+    <div className="overflow-auto flex flex-1 flex-col space-y-4">
+      <h2 className="text-xl font-bold">{project.name} | 상위노출 추적 결과</h2>
+      <div className="w-full space-y-4">
+        {/* ✅ 통계 데이터 로드 */}
+        <Suspense fallback={<StatisticsPanelFallback />}>
+          <KeywordTrackerStatisticsBoardLoader
+            projectSlug={projectSlug}
+            keywordCategories={categoriesResult ?? []}
+            readonly={true}
+          />
+        </Suspense>
+      </div>
 
-            {/* Today's Caught Keywords */}
-            <Card className="shadow-md">
-              <CardHeader>
-                <CardTitle>오늘 잡힌 키워드</CardTitle>
-              </CardHeader>
-              <CardContent className="flex items-center justify-between">
-                <span className="text-2xl font-semibold">
-                  {today_catch_count}
-                </span>
-              </CardContent>
-            </Card>
-
-            {/* Weekly Caught Keywords */}
-            <Card className="shadow-md">
-              <CardHeader>
-                <CardTitle>일주일 전 잡은 키워드</CardTitle>
-              </CardHeader>
-              <CardContent className="flex items-center justify-between">
-                <span className="text-2xl font-semibold">
-                  {week_catch_count}
-                </span>
-              </CardContent>
-            </Card>
-
-            {/* Potential Exposure */}
-            <Card className="shadow-md">
-              <CardHeader>
-                <CardTitle>일 예상 노출량</CardTitle>
-              </CardHeader>
-              <CardContent className="flex items-center justify-between">
-                <span className="text-2xl font-semibold">
-                  {potential_exposure.toFixed(0)} 명
-                </span>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-        <KeywordTrackerDataTable
-          data={fetchedData}
+      {/* ✅ 데이터 테이블 로딩 */}
+      <Suspense fallback={<TablePanelFallback />}>
+        <KeywordTrackerDataTableLoader
+          projectSlug={projectSlug}
           allDates={allDates}
-          keywordCategories={keywordCategories ?? []}
-          projectSlug={params.project_slug}
           readonly={true}
         />
-      </div>
+      </Suspense>
     </div>
   );
 }

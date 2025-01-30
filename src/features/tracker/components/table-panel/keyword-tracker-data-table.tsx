@@ -1,21 +1,15 @@
 "use client";
-
-// states
-import { strictModeState } from "@/features/tracker/atoms/states";
 // hooks
-import { useState, useRef, useCallback, useEffect, useMemo } from "react";
-import { useVirtualizer } from "@tanstack/react-virtual";
-import { useRecoilValue } from "recoil";
+import { useState, useMemo } from "react";
+import { useTrackerData } from "@/features/tracker/hooks/use-tracker-data";
 // components
 import {
   ColumnFiltersState,
   SortingState,
   VisibilityState,
   flexRender,
-  OnChangeFn,
   getCoreRowModel,
   getFilteredRowModel,
-  getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
@@ -27,23 +21,17 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Skeleton } from "@/components/ui/skeleton";
-import { generateColumns } from "@/features/tracker/components/columns";
-// actions
-import { fetchKeywordTrackerWithResults } from "@/features/tracker/actions/fetch-keyword-tracker-with-results";
-// quries
-import { KeywordCategories } from "@/features/setting/queries/define-fetch-keyword-categories";
+import { generateColumns } from "@/features/tracker/components/table-panel/columns";
 // types
-import { KeywordTrackerTransformed } from "@/features/tracker/types/types";
+import { KeywordCategories } from "@/features/setting/queries/define-fetch-keyword-categories";
+import { MergedDataRow } from "@/features/tracker/types/types";
 
 interface KeywordTrackerDataTableProps {
   projectSlug: string;
   allDates: string[];
   keywordCategories: KeywordCategories;
-  rows: KeywordTrackerTransformed[];
-  setRows: React.Dispatch<React.SetStateAction<KeywordTrackerTransformed[]>>;
+  initialRows: MergedDataRow[];
   totalCount: number;
-  loading: boolean;
   readonly?: boolean;
 }
 
@@ -51,151 +39,50 @@ export function KeywordTrackerDataTable({
   allDates,
   keywordCategories,
   projectSlug,
-  rows,
-  setRows,
+  initialRows,
   totalCount,
-  loading,
   readonly = false,
 }: KeywordTrackerDataTableProps) {
-  // [1] 정렬 상태
-  const [sorting, setSorting] = useState<SortingState>([]);
-  // [3] 전체 개수
-  const totalCountRef = useRef(0);
-  // [4] 현재 offset
-  const offsetRef = useRef<number>(0);
-  // [5] 추가로 로드할 수 있는지 여부
-  const [hasNextPage, setHasNextPage] = useState(true);
-  // [6] 로딩 중 상태
-  const [isFetching, setIsFetching] = useState(false);
-  // 엄격 모드
-  const strictMode = useRecoilValue(strictModeState);
-
-  // Table states
+  const { transformedData } = useTrackerData({
+    projectSlug,
+    initialRows,
+    totalCount,
+    readonly,
+  });
+  // 1) DEFAULT SORTING (multi-sort)
+  const [sorting, setSorting] = useState<SortingState>([
+    { id: "keyword_categories.name", desc: false },
+    { id: "keyword_analytics.montly_search_volume", desc: true },
+  ]);
+  // 2) Category Filter
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
 
-  // 한 번에 가져올 개수
-  const limit = 20;
-
-  // [7] 서버 액션 호출 함수
-  const loadNextPage = useCallback(async () => {
-    if (!hasNextPage || isFetching) return; // 이미 로드 중이거나 다음 페이지가 없으면 실행 안 함
-    setIsFetching(true);
-
-    try {
-      const result = await fetchKeywordTrackerWithResults({
-        projectSlug,
-        offset: offsetRef.current,
-        limit,
-        strictMode,
-      });
-      // result: { data, totalCount }
-      setRows((prev) => [...prev, ...result.data]);
-
-      // offset 갱신
-      offsetRef.current += limit;
-
-      // 더 이상 불러올 게 없으면 hasNextPage=false
-      if (offsetRef.current >= totalCountRef.current) {
-        setHasNextPage(false);
-      }
-    } catch (error) {
-      console.error("Failed to load next page:", error);
-    } finally {
-      setIsFetching(false);
-    }
-  }, [projectSlug, strictMode, isFetching, hasNextPage]);
-
-  useEffect(() => {
-    totalCountRef.current = totalCount;
-  }, [totalCount]);
-
+  // 3) columns
   const columns = useMemo(
     () => generateColumns(allDates, keywordCategories, projectSlug, readonly),
     [allDates, keywordCategories, projectSlug, readonly]
   );
 
-  // Initialize the table
+  // 7) Set up the table
   const table = useReactTable({
-    data: rows,
+    data: transformedData,
     columns,
-    defaultColumn: {
-      size: 100,
-      minSize: 50,
-      maxSize: 500,
-    },
-    getCoreRowModel: getCoreRowModel(),
-    // getPaginationRowModel: getPaginationRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    // manualSorting: true, // 서버 정렬
-    // onSortingChange: handleSortingChange,
-    onSortingChange: setSorting,
-    getFilteredRowModel: getFilteredRowModel(),
-    onColumnFiltersChange: setColumnFilters,
-    onColumnVisibilityChange: setColumnVisibility,
     state: {
       sorting,
       columnFilters,
       columnVisibility,
     },
+    onSortingChange: setSorting,
+    onColumnFiltersChange: setColumnFilters,
+    onColumnVisibilityChange: setColumnVisibility,
+    enableMultiSort: true,
+    maxMultiSortColCount: 2,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
   });
 
-  // [11] 무한 스크롤 구현: 스크롤 위치 감지
-  const tableContainerRef = useRef<HTMLDivElement>(null);
-  const onScroll = useCallback(
-    (e: React.UIEvent<HTMLDivElement>) => {
-      const el = e.currentTarget;
-      const { scrollHeight, scrollTop, clientHeight } = el;
-      // 바닥에서 50px 이내면 다음 페이지 로드
-      if (scrollHeight - scrollTop - clientHeight < 200) {
-        // console.log("scroll fetching");
-        loadNextPage();
-      }
-    },
-    [loadNextPage]
-  );
-
-  // [12] 가상 스크롤
-  // const rowVirtualizer = useVirtualizer({
-  //   count: table.getRowModel().rows.length,
-  //   getScrollElement: () => tableContainerRef.current,
-  //   estimateSize: () => 40, // 각 행 높이 추정
-  //   overscan: 5,
-  // });
-
-  if (loading) {
-    const columns = 4;
-    const rows = 10;
-    return (
-      <div className="relative rounded-md border max-w-full overflow-hidden">
-        <table className="table-auto w-full">
-          {/* Table Header Skeleton */}
-          <thead>
-            <tr>
-              {Array.from({ length: columns }).map((_, index) => (
-                <th key={index} className="px-4 py-2">
-                  <Skeleton className="h-4 w-20" />
-                </th>
-              ))}
-            </tr>
-          </thead>
-
-          {/* Table Body Skeleton */}
-          <tbody>
-            {Array.from({ length: rows }).map((_, rowIndex) => (
-              <tr key={rowIndex} className="border-t">
-                {Array.from({ length: columns }).map((_, colIndex) => (
-                  <td key={colIndex} className="px-4 py-2">
-                    <Skeleton className="h-4 w-full" />
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    );
-  }
   return (
     <div className="w-full flex flex-col space-y-2 flex-1">
       {/* Filter by Keyword */}
@@ -214,8 +101,8 @@ export function KeywordTrackerDataTable({
 
       {/* Table Container with Horizontal Scroll */}
       <div
-        ref={tableContainerRef}
-        onScroll={onScroll}
+        // ref={tableContainerRef}
+        // onScroll={onScroll}
         className="relative rounded-md border max-w-full overflow-x-auto overflow-y-auto flex flex-col min-h-0 h-[600px]"
       >
         <Table>
@@ -255,7 +142,7 @@ export function KeywordTrackerDataTable({
             ))}
           </TableHeader>
           <TableBody>
-            {rows.length && table.getRowModel().rows?.length
+            {transformedData.length && table.getRowModel().rows?.length
               ? table.getRowModel().rows.map((row) => (
                   <TableRow
                     key={row.id}
@@ -322,7 +209,7 @@ export function KeywordTrackerDataTable({
                     })}
                   </TableRow>
                 ))
-              : !loading && (
+              : transformedData.length == 0 && (
                   <TableRow>
                     <TableCell
                       colSpan={columns.length}
