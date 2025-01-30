@@ -1,5 +1,10 @@
 import { atom } from "recoil";
 import { ProjectsBlogsWithDetail } from "@/features/tracker/queries/define-fetch-projects-blogs";
+import {
+  DailyResult,
+  KeywordTrackerTransformed,
+  MergedDataRow,
+} from "@/features/tracker/types/types";
 
 /**
  * 엄격 모드(Strict Mode)를 전역으로 관리하는 Recoil atom
@@ -29,5 +34,15 @@ export const projectsBlogsAtom = atom<ProjectsBlogsWithDetail[]>({
 
 export const visibleProjectsBlogsAtom = atom<string[]>({
   key: "visibleProjectsBlogsAtom",
+  default: [],
+});
+
+export const trackerTableDataAtom = atom<KeywordTrackerTransformed[]>({
+  key: "trackerTableDataAtom",
+  default: [],
+});
+
+export const trackerStatisticsAtom = atom<KeywordTrackerTransformed[]>({
+  key: "trackerStatisticsAtom",
   default: [],
 });

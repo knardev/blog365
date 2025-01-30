@@ -1,10 +1,12 @@
+// hooks
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useRecoilValue } from "recoil";
+// atoms
 import {
   strictModeAtom,
   visibleProjectsBlogsAtom,
 } from "@/features/tracker/atoms/states";
-import { fetchKeywordTrackerWithResults } from "../actions/fetch-keyword-tracker-with-results";
+import { fetchKeywordTrackerWithResults } from "@/features/tracker/actions/fetch-keyword-tracker-results";
 
 import {
   MergedDataRow,
@@ -15,12 +17,16 @@ import {
 export const useTrackerData = ({
   projectSlug,
   initialRows,
+  transformedRows,
+  setTransformedRows,
   totalCount,
   readonly = false,
   fetchAll = false,
 }: {
   projectSlug: string;
   initialRows: MergedDataRow[];
+  transformedRows: KeywordTrackerTransformed[];
+  setTransformedRows: (rows: KeywordTrackerTransformed[]) => void;
   totalCount: number;
   readonly?: boolean;
   fetchAll?: boolean;
@@ -33,9 +39,6 @@ export const useTrackerData = ({
   // console.log("🛠 Strict Mode:", strictMode);
 
   const [rows, setRows] = useState<MergedDataRow[]>(initialRows);
-  const [transformedData, setTransformedData] = useState<
-    KeywordTrackerTransformed[]
-  >([]);
 
   const initialRenderRef = useRef<boolean>(true);
   const totalCountRef = useRef(totalCount);
@@ -175,9 +178,9 @@ export const useTrackerData = ({
   // Transform data whenever `rows` or `strictMode` changes
   useEffect(() => {
     // console.log("🔄 Transforming data based on rows/strictMode...");
-    setTransformedData(transformTrackerData(rows));
+    setTransformedRows(transformTrackerData(rows));
   }, [rows, transformTrackerData]);
 
   // console.log("📊 Returning transformed data...");
-  return { transformedData, loadNextPage, hasNextPage, isFetching };
+  return { transformedRows, loadNextPage, hasNextPage, isFetching };
 };

@@ -1,4 +1,4 @@
-import { fetchKeywordTrackerWithResults } from "@/features/tracker/actions/fetch-keyword-tracker-with-results";
+import { fetchKeywordTrackerWithResults } from "@/features/tracker/actions/fetch-keyword-tracker-results";
 import { fetchTotalCount } from "@/features/tracker/actions/fetch-total-count";
 import { fetchKeywordCategories } from "@/features/setting/actions/fetch-keyword-categories";
 import { KeywordTrackerDataTable } from "@/features/tracker/components/table-panel/keyword-tracker-data-table";

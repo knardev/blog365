@@ -11,7 +11,7 @@ import { defineSoftDeleteTrackerQuery } from "../queries/define-soft-delete-keyw
  */
 export async function softDeleteTracker(
   trackerId: string,
-): Promise<void> {
+): Promise<boolean> {
   const { error } = await defineSoftDeleteTrackerQuery(trackerId);
 
   if (error) {
@@ -20,5 +20,5 @@ export async function softDeleteTracker(
   }
 
   // Revalidate the cache for the target path
-  revalidatePath("/(dashboard/[project_slug]/tracker");
+  return true;
 }

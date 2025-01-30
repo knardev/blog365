@@ -1,7 +1,7 @@
 // components
 import { KeywordTrackerStatisticsBoard } from "@/features/tracker/components/statistics-panel/keyword-tracker-statistics-borad";
 // actions
-import { fetchKeywordTrackerWithResults } from "@/features/tracker/actions/fetch-keyword-tracker-with-results";
+import { fetchKeywordTrackerWithResults } from "@/features/tracker/actions/fetch-keyword-tracker-results";
 // types
 import { KeywordCategories } from "@/features/setting/queries/define-fetch-keyword-categories";
 

@@ -2,7 +2,10 @@
 
 // hooks
 import React, { useState, useMemo, useEffect } from "react";
+import { useRecoilState } from "recoil";
 import { useTrackerData } from "@/features/tracker/hooks/use-tracker-data";
+// atoms
+import { trackerStatisticsAtom } from "@/features/tracker/atoms/states";
 // components
 import {
   Area,
@@ -61,9 +64,14 @@ export function KeywordTrackerStatisticsBoard({
   keywordCategories,
   readonly = false,
 }: KeywordTrackerStatisticsBoardProps) {
-  const { transformedData } = useTrackerData({
+  const [trackerStatistics, setTrackerStatistics] = useRecoilState(
+    trackerStatisticsAtom
+  );
+  const { transformedRows } = useTrackerData({
     projectSlug,
     initialRows: initialTrackerData,
+    transformedRows: trackerStatistics,
+    setTransformedRows: setTrackerStatistics,
     totalCount: initialTrackerData.length,
     readonly,
     fetchAll: true,
@@ -88,16 +96,16 @@ export function KeywordTrackerStatisticsBoard({
    */
   const filteredTrackers = useMemo(() => {
     // If no category is selected, return all trackers
-    if (selectedCategories.length === 0) return transformedData;
+    if (selectedCategories.length === 0) return transformedRows;
 
-    return transformedData.filter((item) => {
+    return transformedRows.filter((item) => {
       // Ensure item.keyword_categories is not null
       if (!item.keyword_categories?.name) return false;
 
       // Check if this tracker belongs to any selected category
       return selectedCategories.includes(item.keyword_categories.name);
     });
-  }, [transformedData, selectedCategories]);
+  }, [transformedRows, selectedCategories]);
 
   /**
    * 2) Compute potentialExposureByDate & catchCountByDate from filtered trackers.

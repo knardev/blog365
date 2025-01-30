@@ -1,7 +1,10 @@
 "use client";
 // hooks
 import { useState, useMemo } from "react";
+import { useRecoilState } from "recoil";
 import { useTrackerData } from "@/features/tracker/hooks/use-tracker-data";
+// atoms
+import { trackerTableDataAtom } from "@/features/tracker/atoms/states";
 // components
 import {
   ColumnFiltersState,
@@ -43,9 +46,13 @@ export function KeywordTrackerDataTable({
   totalCount,
   readonly = false,
 }: KeywordTrackerDataTableProps) {
-  const { transformedData } = useTrackerData({
+  const [trackerTableData, setTrackerTableData] =
+    useRecoilState(trackerTableDataAtom);
+  const { transformedRows } = useTrackerData({
     projectSlug,
     initialRows,
+    transformedRows: trackerTableData,
+    setTransformedRows: setTrackerTableData,
     totalCount,
     readonly,
   });
@@ -66,7 +73,7 @@ export function KeywordTrackerDataTable({
 
   // 7) Set up the table
   const table = useReactTable({
-    data: transformedData,
+    data: transformedRows,
     columns,
     state: {
       sorting,
@@ -142,7 +149,7 @@ export function KeywordTrackerDataTable({
             ))}
           </TableHeader>
           <TableBody>
-            {transformedData.length && table.getRowModel().rows?.length
+            {transformedRows.length && table.getRowModel().rows?.length
               ? table.getRowModel().rows.map((row) => (
                   <TableRow
                     key={row.id}
@@ -209,7 +216,7 @@ export function KeywordTrackerDataTable({
                     })}
                   </TableRow>
                 ))
-              : transformedData.length == 0 && (
+              : transformedRows.length == 0 && (
                   <TableRow>
                     <TableCell
                       colSpan={columns.length}

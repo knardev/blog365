@@ -1,6 +1,15 @@
 "use client";
 
+// hooks
 import { useState } from "react";
+import { useSetRecoilState } from "recoil";
+import { useToast } from "@/hooks/use-toast";
+// atoms
+import {
+  trackerTableDataAtom,
+  trackerStatisticsAtom,
+} from "@/features/tracker/atoms/states";
+// components
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -9,6 +18,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { MoreHorizontal } from "lucide-react";
+// actions
 import { softDeleteTracker } from "@/features/tracker/actions/soft-delete-keyword-tracker";
 
 interface KeywordCellProps {
@@ -26,7 +36,10 @@ export function KeywordCell({
   readonly,
   trackerId,
 }: KeywordCellProps) {
+  const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const setTrackerTableData = useSetRecoilState(trackerTableDataAtom);
+  const setTrackerStatistics = useSetRecoilState(trackerStatisticsAtom);
 
   const searchUrl = keywords
     ? `https://search.naver.com/search.naver?where=nexearch&sm=top_hty&fbm=0&ie=utf8&query=${keywords.name}`
@@ -34,9 +47,20 @@ export function KeywordCell({
 
   const handleSoftDelete = async () => {
     try {
-      await softDeleteTracker(trackerId); // Soft Delete Action 호출
-      alert("Tracker deleted successfully.");
-      setDialogOpen(false); // 다이얼로그 닫기
+      const status = await softDeleteTracker(trackerId); // Soft Delete Action 호출
+      if (status) {
+        toast({
+          title: "알림",
+          description: "트래커가 삭제되었습니다.",
+        });
+        setTrackerTableData((prev) =>
+          prev.filter((tracker) => tracker.id !== trackerId)
+        );
+        setTrackerStatistics((prev) =>
+          prev.filter((tracker) => tracker.id !== trackerId)
+        );
+        setDialogOpen(false);
+      }
     } catch (error) {
       console.error("Error deleting tracker:", error);
       alert("Failed to delete tracker.");
