@@ -13,6 +13,12 @@ import {
 // components
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { EyeOff, Eye } from "lucide-react";
 // actions
 import { addProjectsBlogs } from "@/features/tracker/actions/add-projects-blogs";
@@ -141,13 +147,22 @@ export function ProjectsBlogsCards({ projectSlug }: ProjectsBlogsCardsProps) {
                   disabled={isLoading}
                 />
               </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => handleToggleVisible(blog.id, !isVisible)}
-              >
-                {isVisible ? <Eye size={20} /> : <EyeOff size={20} />}
-              </Button>
+              <TooltipProvider delayDuration={200}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleToggleVisible(blog.id, !isVisible)}
+                    >
+                      {isVisible ? <Eye size={20} /> : <EyeOff size={20} />}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {isVisible ? "계산 포함" : "계산 미포함"}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
           </div>
         );

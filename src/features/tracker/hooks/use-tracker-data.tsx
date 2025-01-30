@@ -37,6 +37,7 @@ export const useTrackerData = ({
     KeywordTrackerTransformed[]
   >([]);
 
+  const initialRenderRef = useRef<boolean>(true);
   const totalCountRef = useRef(totalCount);
   const offsetRef = useRef<number>(fetchBatch);
   const [hasNextPage, setHasNextPage] = useState(
@@ -150,12 +151,19 @@ export const useTrackerData = ({
 
   // Initialize rows from props
   useEffect(() => {
-    // console.log("🛠 Setting initial rows from props:", initialRows);
-    setRows(initialRows);
+    if (initialRenderRef.current) {
+      console.log("🛠 Setting initial rows from props:", initialRows);
+      setRows(initialRows);
+    }
   }, [initialRows]);
 
   // Automatically load next page on mount or when dependencies change
   useEffect(() => {
+    if (initialRenderRef.current) {
+      initialRenderRef.current = false; // Prevent further executions on first render
+      return;
+    }
+
     if (!fetchAll && hasNextPage && !isFetching) {
       // console.log("🚀 Loading next page automatically...");
       loadNextPage();

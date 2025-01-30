@@ -62,9 +62,7 @@ export function ProjectsBlogsSheet({
     // console.log("👉 Initial projectsBlogs from server:", initialProjectsBlogs);
     setProjectBlogsState(initialProjectsBlogs);
     // initialProjectsBlogs에서 active가 true인 블로그만 visibleProjectsBlogs에 추가합니다.
-    setVisibleProjectsBlogs(
-      initialProjectsBlogs.filter((pb) => pb.active).map((pb) => pb.blog_id)
-    );
+    setVisibleProjectsBlogs(initialProjectsBlogs.map((pb) => pb.blog_id));
 
     return () => {
       resetProjectBlogsState();
