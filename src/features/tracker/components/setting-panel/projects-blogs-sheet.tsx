@@ -68,7 +68,12 @@ export function ProjectsBlogsSheet({
       resetProjectBlogsState();
       resetBlogCardData();
     };
-  }, [initialProjectsBlogs]);
+  }, [
+    initialProjectsBlogs,
+    initialAvailableBlogs,
+    resetProjectBlogsState,
+    resetBlogCardData,
+  ]);
 
   // projectBlogsState이 변경될 때마다 블로그 카드 데이터를 업데이트하여 ProjectsBlogsCards가 최신 데이터로 렌더링되도록 합니다.
   useEffect(() => {

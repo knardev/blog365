@@ -179,7 +179,7 @@ export const useTrackerData = ({
   useEffect(() => {
     // console.log("🔄 Transforming data based on rows/strictMode...");
     setTransformedRows(transformTrackerData(rows));
-  }, [rows, transformTrackerData]);
+  }, [rows, transformTrackerData, setTransformedRows]);
 
   // console.log("📊 Returning transformed data...");
   return { transformedRows, loadNextPage, hasNextPage, isFetching };

@@ -130,11 +130,7 @@ export function generateColumns(
       cell: ({ row }) => {
         const tracker = row.original;
         return (
-          <ActiveSwitch
-            trackerId={tracker.id}
-            isActive={tracker.active}
-            projectSlug={projectSlug}
-          />
+          <ActiveSwitch trackerId={tracker.id} isActive={tracker.active} />
         );
       },
     },

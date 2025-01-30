@@ -7,14 +7,9 @@ import { updateKeywordTracker } from "@/features/keyword/actions/update-keyword-
 interface ActiveSwitchProps {
   trackerId: string;
   isActive: boolean;
-  projectSlug: string;
 }
 
-export function ActiveSwitch({
-  trackerId,
-  isActive,
-  projectSlug,
-}: ActiveSwitchProps) {
+export function ActiveSwitch({ trackerId, isActive }: ActiveSwitchProps) {
   const [active, setActive] = useState(isActive);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -23,11 +18,7 @@ export function ActiveSwitch({
     setIsSaving(true);
 
     try {
-      await updateKeywordTracker(
-        trackerId,
-        { active: checked },
-        `/${projectSlug}/keyword`
-      );
+      await updateKeywordTracker(trackerId, { active: checked });
     } catch (error) {
       console.error("Failed to update active status:", error);
       setActive(!checked); // Rollback on error

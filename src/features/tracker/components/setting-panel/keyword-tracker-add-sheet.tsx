@@ -198,7 +198,7 @@ export function KeywordTrackerAddSheet({
 
   useEffect(() => {
     if (newKeywordTrackers.length > 0) handleScrap();
-  }, [newKeywordTrackers]);
+  }, [newKeywordTrackers, handleScrap]);
 
   return (
     <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>

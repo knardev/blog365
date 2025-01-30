@@ -12,7 +12,7 @@ export async function scrapBlogAnalytics(
   },
 ): Promise<boolean> {
   const supabase = createClient();
-  let response = await fetch(
+  const response = await fetch(
     `${process.env.NEXT_PUBLIC_SITE_URL}/api/scrapping-blog-visitors`,
     {
       method: "POST",
@@ -26,7 +26,7 @@ export async function scrapBlogAnalytics(
       }),
     },
   );
-  let data = await response.json();
+  const data = await response.json();
   if (!data.success) {
     console.error(
       `Failed to scrap blog analytics for blog ${blogId}, slug ${blogSlug}`,

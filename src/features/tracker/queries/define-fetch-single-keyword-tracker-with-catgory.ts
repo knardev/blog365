@@ -13,7 +13,7 @@ export const defineFetchSingleKeywordTrackerWithCategoriesQuery = (
   id: string,
   serviceRole: boolean = false,
 ) => {
-  let query = createClient(serviceRole)
+  const query = createClient(serviceRole)
     .from("keyword_trackers")
     .select(`
       *,
