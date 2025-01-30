@@ -89,6 +89,7 @@ export function generateColumns(
         }
         return (
           <CategorySelector
+            key={tracker.id}
             trackerId={tracker.id}
             currentCategoryId={tracker.keyword_categories?.id || null}
             currentCategoryName={tracker.keyword_categories?.name || null}
