@@ -8,10 +8,12 @@ import { useRecoilState } from "recoil";
 import {
   blgoCardDataAtom,
   projectsBlogsAtom,
+  visibleProjectsBlogsAtom,
 } from "@/features/tracker/atoms/states";
 // components
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { EyeOff, Eye } from "lucide-react";
 // actions
 import { addProjectsBlogs } from "@/features/tracker/actions/add-projects-blogs";
 import { updateProjectsBlogs } from "@/features/tracker/actions/update-projects-blogs";
@@ -25,6 +27,9 @@ export function ProjectsBlogsCards({ projectSlug }: ProjectsBlogsCardsProps) {
   const [blogCardData, setBlogCardData] = useRecoilState(blgoCardDataAtom);
   const [projectsBlogsState, setProjectBlogsState] =
     useRecoilState(projectsBlogsAtom);
+  const [visibleProjectsBlogs, setVisibleProjectsBlogs] = useRecoilState(
+    visibleProjectsBlogsAtom
+  );
 
   // ---------- 현재 토글 중인 blogId를 추적하기 위한 상태 ----------
   const [loadingIds, setLoadingIds] = useState<Set<string>>(new Set());
@@ -41,6 +46,15 @@ export function ProjectsBlogsCards({ projectSlug }: ProjectsBlogsCardsProps) {
       }
       return newSet;
     });
+  };
+
+  const handleToggleVisible = (blogId: string, newActive: boolean) => {
+    // newActive가 true면 visibleProjectsBlogs에 추가
+    if (newActive) {
+      setVisibleProjectsBlogs((prev) => [...prev, blogId]);
+    } else {
+      setVisibleProjectsBlogs((prev) => prev.filter((pb) => pb !== blogId));
+    }
   };
 
   /**
@@ -104,6 +118,7 @@ export function ProjectsBlogsCards({ projectSlug }: ProjectsBlogsCardsProps) {
     <div className="space-y-3">
       {blogCardData.map((blog) => {
         const isLoading = loadingIds.has(blog.id);
+        const isVisible = visibleProjectsBlogs.includes(blog.id);
         return (
           <div
             key={blog.id}
@@ -113,17 +128,26 @@ export function ProjectsBlogsCards({ projectSlug }: ProjectsBlogsCardsProps) {
               <p className="font-medium">{blog.name}</p>
               <p className="text-xs text-gray-500">{blog.blog_slug}</p>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm">
-                {blog.active ? "활성화" : "비활성화"}
-              </span>
-              <Switch
-                checked={blog.active}
-                onCheckedChange={(checked) =>
-                  handleToggleActive(blog.id, checked)
-                }
-                disabled={isLoading}
-              />
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <span className="text-sm">
+                  {blog.active ? "활성화" : "비활성화"}
+                </span>
+                <Switch
+                  checked={blog.active}
+                  onCheckedChange={(checked) =>
+                    handleToggleActive(blog.id, checked)
+                  }
+                  disabled={isLoading}
+                />
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => handleToggleVisible(blog.id, !isVisible)}
+              >
+                {isVisible ? <Eye size={20} /> : <EyeOff size={20} />}
+              </Button>
             </div>
           </div>
         );

@@ -26,3 +26,8 @@ export const projectsBlogsAtom = atom<ProjectsBlogsWithDetail[]>({
   key: "projectsBlogsAtom",
   default: [],
 });
+
+export const visibleProjectsBlogsAtom = atom<string[]>({
+  key: "visibleProjectsBlogsAtom",
+  default: [],
+});

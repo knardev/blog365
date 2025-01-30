@@ -7,6 +7,7 @@ import { useRecoilState, useResetRecoilState } from "recoil";
 import {
   blgoCardDataAtom,
   projectsBlogsAtom,
+  visibleProjectsBlogsAtom,
 } from "@/features/tracker/atoms/states";
 // components
 import {
@@ -46,6 +47,10 @@ export function ProjectsBlogsSheet({
     useRecoilState(projectsBlogsAtom);
   const resetProjectBlogsState = useResetRecoilState(projectsBlogsAtom);
 
+  const [visibleProjectsBlogs, setVisibleProjectsBlogs] = useRecoilState(
+    visibleProjectsBlogsAtom
+  );
+
   // projectsBlogs는 서버 컴포넌트에서 넘어온 props 이기 때문에,
   // 컴포넌트가 마운트될 때 한번만 초기화됩니다.
   useEffect(() => {
@@ -55,8 +60,11 @@ export function ProjectsBlogsSheet({
     //   initialAvailableBlogs
     // );
     // console.log("👉 Initial projectsBlogs from server:", initialProjectsBlogs);
-
     setProjectBlogsState(initialProjectsBlogs);
+    // initialProjectsBlogs에서 active가 true인 블로그만 visibleProjectsBlogs에 추가합니다.
+    setVisibleProjectsBlogs(
+      initialProjectsBlogs.filter((pb) => pb.active).map((pb) => pb.blog_id)
+    );
 
     return () => {
       resetProjectBlogsState();

@@ -1,6 +1,9 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useRecoilValue } from "recoil";
-import { strictModeAtom } from "@/features/tracker/atoms/states";
+import {
+  strictModeAtom,
+  visibleProjectsBlogsAtom,
+} from "@/features/tracker/atoms/states";
 import { fetchKeywordTrackerWithResults } from "../actions/fetch-keyword-tracker-with-results";
 
 import {
@@ -26,6 +29,7 @@ export const useTrackerData = ({
 
   const fetchBatch = 20;
   const strictMode = useRecoilValue(strictModeAtom);
+  const visibleProjectsBlogs = useRecoilValue(visibleProjectsBlogsAtom);
   // console.log("🛠 Strict Mode:", strictMode);
 
   const [rows, setRows] = useState<MergedDataRow[]>(initialRows);
@@ -66,12 +70,15 @@ export const useTrackerData = ({
           const isPopularPost =
             result.smart_block_name?.includes("인기글") ?? false;
 
-          if (
-            result.rank_in_smart_block !== null &&
-            result.rank_in_smart_block <=
-              (isPopularPost ? maxRankPopular : maxRankNormal)
-          ) {
-            resultsMap[date].catch_success += 1;
+          if (result.blog_id) {
+            if (
+              visibleProjectsBlogs.includes(result.blog_id) &&
+              result.rank_in_smart_block !== null &&
+              result.rank_in_smart_block <=
+                (isPopularPost ? maxRankPopular : maxRankNormal)
+            ) {
+              resultsMap[date].catch_success += 1;
+            }
           }
 
           resultsMap[date].catch_result.push({
@@ -98,7 +105,7 @@ export const useTrackerData = ({
       // console.log("✅ Transformed Data:", transformed);
       return transformed;
     },
-    [strictMode]
+    [strictMode, visibleProjectsBlogs]
   );
 
   const loadNextPage = useCallback(async () => {
