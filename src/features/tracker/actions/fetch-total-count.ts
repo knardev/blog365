@@ -28,6 +28,7 @@ export async function fetchTotalCount(
     .from("keyword_trackers")
     .select("*", { count: "exact", head: true })
     .eq("project_id", projectData?.id)
+    .eq("delete_state", false)
     .eq("active", true);
 
   if (countError) {

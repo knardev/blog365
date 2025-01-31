@@ -19,11 +19,13 @@ export function useTrackerData({
   readonly?: boolean;
   fetchBatch?: number;
 }) {
+  console.log("total count", totalCount);
   const [rows, setRows] = useState<MergedDataRow[]>(initialRows);
   const [isFetching, setIsFetching] = useState(false);
 
   useEffect(() => {
     // If we've already fetched everything, don't fetch
+    console.log("rows.length", rows.length);
     if (rows.length >= totalCount) return;
     if (isFetching) return;
 

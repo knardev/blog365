@@ -51,6 +51,7 @@ import { scrapKeywordTrackerResult } from "@/features/tracker/actions/scrap-keyw
 import { KeywordCategories } from "@/features/setting/queries/define-fetch-keyword-categories";
 import { AddKeywordTracker } from "@/features/tracker/queries/define-add-keyword-tracker";
 import { DailyResult } from "@/features/tracker/types/types";
+import { getTodayInKST } from "@/utils/date";
 
 export function KeywordTrackerAddSheet({
   projectSlug,
@@ -61,10 +62,12 @@ export function KeywordTrackerAddSheet({
 }) {
   const router = useRouter(); // useRouter 훅 사용
   const [isSheetOpen, setIsSheetOpen] = useState(false); // 시트 열림 여부
+
   // 키워드 추가 시 필요한 상태들
   const [keywords, setKeywords] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false); // DB에 저장하는 중인지 여부
+
   // 스크래핑 관련 상태들
   const [isScrapping, setIsScrapping] = useState(false);
   const [newKeywordTrackers, setNewKeywordTrackers] = useState<
@@ -74,6 +77,7 @@ export function KeywordTrackerAddSheet({
   const [failedScrappedTrakers, setFailedScrappedTrakers] = useState<string[]>(
     []
   );
+
   // 프론트 상태 업데이트를 위한 recoil hook 사용
   const strictMode = useRecoilValue(strictModeAtom);
   const visibleProjectsBlogs = useRecoilValue(visibleProjectsBlogsAtom);
@@ -100,6 +104,7 @@ export function KeywordTrackerAddSheet({
   };
 
   const handleScrap = async () => {
+    if (isScrapping) return;
     setIsScrapping(true);
     for (const tracker of newKeywordTrackers) {
       if (
@@ -176,12 +181,24 @@ export function KeywordTrackerAddSheet({
           (a, b) => a.rank_in_smart_block - b.rank_in_smart_block
         );
       });
+
+      // 3) Calculate daily_first_page_exposure
+      //    daily_first_page_exposure = SUM of (catch_success * daily_search_volume) over all dates
+      const todayString = getTodayInKST();
+      if (!resultsMap[todayString]) {
+        resultsMap[todayString] = { catch_success: 0, catch_result: [] };
+      }
+      const dailySearchVolume =
+        mergedDataRow.keyword_analytics?.daily_search_volume ?? 0;
+      const todayCatchSuccess = resultsMap[todayString].catch_success ?? 0;
+      const dailyExposureSum = todayCatchSuccess * dailySearchVolume;
+
       const transformedData = {
         ...mergedDataRow,
         keyword_tracker_results: resultsMap,
         keyword_analytics: {
           ...mergedDataRow.keyword_analytics,
-          daily_first_page_exposure: 0,
+          daily_first_page_exposure: dailyExposureSum,
         },
       };
       setTrackerTableData((prev) => [...prev, transformedData]);
