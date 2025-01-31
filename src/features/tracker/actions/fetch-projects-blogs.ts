@@ -13,10 +13,13 @@ import { ProjectsBlogsWithDetail } from "../queries/define-fetch-projects-blogs"
 
 export async function fetchProjectsBlogs(
   projectSlug: string,
+  serviceRole = false,
 ): Promise<ProjectsBlogsWithDetail[] | null> {
   // ): Promise<ProjectBlogWithDetails[] | null> {
   // Fetch the project ID using the provided slug
-  const { data: projectData, error: projectError } = await createClient()
+  const { data: projectData, error: projectError } = await createClient(
+    serviceRole,
+  )
     .from("projects")
     .select("id")
     .eq("slug", projectSlug)
@@ -30,7 +33,7 @@ export async function fetchProjectsBlogs(
   const projectId = projectData?.id;
 
   // Fetch projects_blogs data
-  const query = await defineFetchProjectsBlogsQuery(projectId);
+  const query = await defineFetchProjectsBlogsQuery(projectId, serviceRole);
   const { data, error } = query;
   // console.log("data", data);
 

@@ -38,7 +38,7 @@ export function CategorySelector({
   keywordCategories,
   projectSlug,
 }: CategorySelectorProps) {
-  console.log("currentCategoryName", currentCategoryName);
+  // console.log("currentCategoryName", currentCategoryName);
   const [isSaving, setIsSaving] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState(currentCategoryId);
   const setTrackerTableData = useSetRecoilState(trackerTableDataAtom);

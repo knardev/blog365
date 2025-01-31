@@ -7,8 +7,11 @@ import { createClient } from "@/utils/supabase/server";
  * @returns The Supabase query object
  */
 
-export const defineFetchProjectsBlogsQuery = (projectId: string) => {
-  return createClient()
+export const defineFetchProjectsBlogsQuery = (
+  projectId: string,
+  serviceRole: boolean = false,
+) => {
+  return createClient(serviceRole)
     .from("projects_blogs")
     .select(`
       *,
