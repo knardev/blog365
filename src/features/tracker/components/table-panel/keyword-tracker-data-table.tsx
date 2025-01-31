@@ -36,6 +36,8 @@ import {
   KeywordTrackerTransformed,
   DailyResult,
 } from "@/features/tracker/types/types";
+// utils
+import { getTodayInKST } from "@/utils/date";
 
 interface KeywordTrackerDataTableProps {
   projectSlug: string;
@@ -110,14 +112,24 @@ export function KeywordTrackerDataTable({
             (a, b) => a.rank_in_smart_block - b.rank_in_smart_block
           );
         });
-        // console.log("resultsMap", resultsMap);
+
+        // 3) Calculate daily_first_page_exposure
+        //    daily_first_page_exposure = SUM of (catch_success * daily_search_volume) over all dates
+        const todayString = getTodayInKST();
+        if (!resultsMap[todayString]) {
+          resultsMap[todayString] = { catch_success: 0, catch_result: [] };
+        }
+        const dailySearchVolume =
+          tracker.keyword_analytics?.daily_search_volume ?? 0;
+        const todayCatchSuccess = resultsMap[todayString].catch_success ?? 0;
+        const dailyExposureSum = todayCatchSuccess * dailySearchVolume;
 
         return {
           ...tracker,
           keyword_tracker_results: resultsMap,
           keyword_analytics: {
             ...tracker.keyword_analytics,
-            daily_first_page_exposure: 0,
+            daily_first_page_exposure: dailyExposureSum,
           },
         };
       });
