@@ -54,12 +54,6 @@ export function ProjectsBlogsSheet({
   // projectsBlogs는 서버 컴포넌트에서 넘어온 props 이기 때문에,
   // 컴포넌트가 마운트될 때 한번만 초기화됩니다.
   useEffect(() => {
-    // console.log("✅ ProjectsBlogsSheet mounted");
-    // console.log(
-    //   "👉 Initial availableBlogs from server:",
-    //   initialAvailableBlogs
-    // );
-    // console.log("👉 Initial projectsBlogs from server:", initialProjectsBlogs);
     setProjectBlogsState(initialProjectsBlogs);
     // initialProjectsBlogs에서 active가 true인 블로그만 visibleProjectsBlogs에 추가합니다.
     setVisibleProjectsBlogs(initialProjectsBlogs.map((pb) => pb.blog_id));
@@ -68,12 +62,7 @@ export function ProjectsBlogsSheet({
       resetProjectBlogsState();
       resetBlogCardData();
     };
-  }, [
-    initialProjectsBlogs,
-    initialAvailableBlogs,
-    resetProjectBlogsState,
-    resetBlogCardData,
-  ]);
+  }, [initialProjectsBlogs, resetProjectBlogsState, resetBlogCardData]);
 
   // projectBlogsState이 변경될 때마다 블로그 카드 데이터를 업데이트하여 ProjectsBlogsCards가 최신 데이터로 렌더링되도록 합니다.
   useEffect(() => {

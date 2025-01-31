@@ -1,11 +1,14 @@
 "use client";
 
 // hooks
-import React, { useState, useMemo, useEffect } from "react";
-import { useRecoilState } from "recoil";
-import { useTrackerData } from "@/features/tracker/hooks/use-tracker-data";
+import { useEffect, useState, useMemo, useCallback } from "react";
+import { useRecoilState, useRecoilValue } from "recoil";
 // atoms
-import { trackerStatisticsAtom } from "@/features/tracker/atoms/states";
+import {
+  strictModeAtom,
+  visibleProjectsBlogsAtom,
+  trackerStatisticsAtom,
+} from "@/features/tracker/atoms/states";
 // components
 import {
   Area,
@@ -48,8 +51,12 @@ import {
 // utils
 import { getTodayInKST, getYesterdayInKST } from "@/utils/date";
 // types
-import { MergedDataRow } from "@/features/tracker/types/types";
 import { KeywordCategories } from "@/features/setting/queries/define-fetch-keyword-categories";
+import {
+  MergedDataRow,
+  KeywordTrackerTransformed,
+  DailyResult,
+} from "@/features/tracker/types/types";
 
 interface KeywordTrackerStatisticsBoardProps {
   projectSlug: string;
@@ -67,15 +74,76 @@ export function KeywordTrackerStatisticsBoard({
   const [trackerStatistics, setTrackerStatistics] = useRecoilState(
     trackerStatisticsAtom
   );
-  const { transformedRows } = useTrackerData({
-    projectSlug,
-    initialRows: initialTrackerData,
-    transformedRows: trackerStatistics,
-    setTransformedRows: setTrackerStatistics,
-    totalCount: initialTrackerData.length,
-    readonly,
-    fetchAll: true,
-  });
+
+  const strictMode = useRecoilValue(strictModeAtom);
+  const visibleProjectsBlogs = useRecoilValue(visibleProjectsBlogsAtom);
+
+  // do your transform
+  const transformTrackerData = useCallback(
+    (rows: MergedDataRow[]) => {
+      console.log("🔄 Transforming tracker data...");
+      const maxRankPopular = strictMode ? 2 : 7;
+      const maxRankNormal = strictMode ? 2 : 3;
+
+      return rows.map((tracker) => {
+        const resultsMap: Record<string, DailyResult> = {};
+
+        tracker.raw_results.forEach((result) => {
+          const date = result.date;
+          if (!resultsMap[date]) {
+            resultsMap[date] = { catch_success: 0, catch_result: [] };
+          }
+
+          const isPopularPost =
+            result.smart_block_name?.includes("인기글") ?? false;
+
+          if (result.blog_id) {
+            if (
+              visibleProjectsBlogs.includes(result.blog_id) &&
+              result.rank_in_smart_block !== null &&
+              result.rank_in_smart_block <=
+                (isPopularPost ? maxRankPopular : maxRankNormal)
+            ) {
+              resultsMap[date].catch_success += 1;
+            }
+          }
+
+          resultsMap[date].catch_result.push({
+            post_url: result.post_url ?? "N/A",
+            smart_block_name: result.smart_block_name ?? "N/A",
+            rank_in_smart_block: result.rank_in_smart_block ?? -1,
+          });
+
+          // sort catch_result ascending by rank
+          resultsMap[date].catch_result.sort(
+            (a, b) => a.rank_in_smart_block - b.rank_in_smart_block
+          );
+        });
+
+        return {
+          ...tracker,
+          keyword_tracker_results: resultsMap,
+          keyword_analytics: {
+            ...tracker.keyword_analytics,
+            daily_first_page_exposure: 0,
+          },
+        };
+      });
+    },
+    [strictMode, visibleProjectsBlogs]
+  );
+
+  // 3) useMemo for performance (avoid re-transforms on every render)
+  const transformed = useMemo(
+    () => transformTrackerData(initialTrackerData),
+    [initialTrackerData, transformTrackerData]
+  );
+
+  // store to Recoil if needed, or you can simply use `transformed`:
+  useEffect(() => {
+    // If you truly need to store the transformed data in Recoil, do it once here:
+    setTrackerStatistics(transformed);
+  }, [transformed, setTrackerStatistics]);
 
   const today = getTodayInKST();
   const [timeRange, setTimeRange] = useState<"7d" | "30d">("7d");
@@ -96,16 +164,16 @@ export function KeywordTrackerStatisticsBoard({
    */
   const filteredTrackers = useMemo(() => {
     // If no category is selected, return all trackers
-    if (selectedCategories.length === 0) return transformedRows;
+    if (selectedCategories.length === 0) return trackerStatistics;
 
-    return transformedRows.filter((item) => {
+    return trackerStatistics.filter((item) => {
       // Ensure item.keyword_categories is not null
       if (!item.keyword_categories?.name) return false;
 
       // Check if this tracker belongs to any selected category
       return selectedCategories.includes(item.keyword_categories.name);
     });
-  }, [transformedRows, selectedCategories]);
+  }, [trackerStatistics, selectedCategories]);
 
   /**
    * 2) Compute potentialExposureByDate & catchCountByDate from filtered trackers.

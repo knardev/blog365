@@ -61,6 +61,7 @@ export default async function Page({
         <KeywordTrackerDataTableLoader
           projectSlug={projectSlug}
           allDates={allDates}
+          keywordCategories={categoriesResult ?? []}
         />
       </Suspense>
     </div>
