@@ -7,7 +7,7 @@ export async function ShareProviderLoader({
 }: {
   projectSlug: string;
 }) {
-  const projectsBlogs = await fetchProjectsBlogs(projectSlug);
+  const projectsBlogs = await fetchProjectsBlogs(projectSlug, true);
 
   return <ShareProvider initialProjectsBlogs={projectsBlogs ?? []} />;
 }
