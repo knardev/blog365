@@ -11,6 +11,7 @@ export function ShareProvider({
 }: {
   initialProjectsBlogs: ProjectsBlogsWithDetail[];
 }) {
+  console.log("initialProjectsBlogs", initialProjectsBlogs);
   const [visibleProjectsBlogs, setVisibleProjectsBlogs] = useRecoilState(
     visibleProjectsBlogsAtom
   );
