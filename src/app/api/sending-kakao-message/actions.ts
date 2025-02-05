@@ -39,6 +39,18 @@ export interface QueueMessage {
   message: MessageContent;
 }
 
+interface Tracker {
+  id: string;
+  keyword_id: string;
+  keywords: {
+    name: string;
+  }; // 객체 타입으로 변경
+}
+
+type KeywordAnalysisResult = {
+  monthly_search_volume: number;
+};
+
 /**
  * sendKakaoMessageAction
  * 1) 프로젝트 정보 가져오기 (slug, name)
@@ -71,7 +83,6 @@ export async function sendKakaoMessageAction(
     const projectName = projectData?.name ?? "Demo Project";
 
     // =============== (2) keyword_trackers 가져오기 ===============
-    // keyword_id -> keyword(name) 조인
     const { data: trackers, error: trackersError } = await supabase
       .from("keyword_trackers")
       .select("id, keyword_id, keywords(name)")
@@ -90,6 +101,17 @@ export async function sendKakaoMessageAction(
       console.log("[INFO] No active keyword_trackers found for this project.");
       return { success: false, error: "No active keyword_trackers found." };
     }
+
+    console.log("[INFO] Found active keyword_trackers:", trackers);
+
+    const trackersData = trackers as unknown as Tracker[];
+    const validTrackers: Tracker[] = trackersData.map((tracker) => ({
+      id: tracker.id,
+      keyword_id: tracker.keyword_id,
+      keywords: tracker.keywords,
+    }));
+
+    // console.log("[INFO] Found active keyword_trackers:", trackers);
 
     // 한국 시간대 설정
     const KST = "Asia/Seoul";
@@ -114,6 +136,7 @@ export async function sendKakaoMessageAction(
 
     // =============== (3) 모든 tracker의 결과를 한 번의 쿼리로 가져오기 ===============
     const trackerIds = trackers.map((tracker) => tracker.id);
+    // console.log("trackerIds", trackerIds);
     const { data: results, error: resultsError } = await supabase
       .from("keyword_tracker_results")
       .select(`
@@ -126,6 +149,7 @@ export async function sendKakaoMessageAction(
       `)
       .in("keyword_tracker", trackerIds)
       .eq("date", dateString); // 어제 날짜
+    // console.log("results", results);
 
     if (resultsError) {
       console.error(
@@ -137,6 +161,7 @@ export async function sendKakaoMessageAction(
 
     // =============== (4) 필터링 ===============
     const filteredResults: {
+      keywordTracker: string;
       keywordName: string;
       smartBlock: string;
       rank: number;
@@ -160,12 +185,13 @@ export async function sendKakaoMessageAction(
       const blockName = r.smart_block_name ?? "";
       const rank = r.rank_in_smart_block ?? -1;
 
-      if (blockName === "인기글") {
+      if (blockName.includes("인기글")) {
         if (rank > 0 && rank <= 7) {
           filteredResults.push({
             keywordName,
             smartBlock: blockName,
             rank,
+            keywordTracker: r.keyword_tracker,
           });
         }
       } else {
@@ -174,11 +200,45 @@ export async function sendKakaoMessageAction(
             keywordName,
             smartBlock: blockName,
             rank,
+            keywordTracker: r.keyword_tracker,
           });
         }
       }
     }
 
+    // console.log("filteredResults", filteredResults);
+
+    // =============== (5) 키워드 분석 결과 가져오기 ===============
+    let totalExposure = 0;
+    for (const result of filteredResults) {
+      const keywordTrackerId = result.keywordTracker;
+      const tracker = validTrackers.find((t) => t.id === keywordTrackerId);
+      if (!tracker) {
+        console.warn(`[WARN] Tracker not found for ID: ${keywordTrackerId}`);
+        continue;
+      }
+
+      const { data: keywordAnalysis, error: keywordAnalysisError } =
+        await supabase
+          .from("keyword_analytics")
+          .select("daily_search_volume")
+          .eq("keyword_id", tracker.keyword_id)
+          .eq("date", dateString)
+          .single();
+
+      if (keywordAnalysisError) {
+        console.error(
+          "[ERROR] Failed to fetch keyword_analysis:",
+          keywordAnalysisError.message,
+        );
+        return { success: false, error: keywordAnalysisError.message };
+      }
+      // console.log("result", result);
+      // console.log("keywordAnalysis", keywordAnalysis);
+
+      const dailySearchVolume = keywordAnalysis.daily_search_volume;
+      totalExposure += dailySearchVolume;
+    }
     // (트래커 총 개수)
     const totalTrackers = trackers.length;
 
@@ -193,17 +253,7 @@ export async function sendKakaoMessageAction(
     let messageText =
       `💌최블레포트\n[${projectName}] ${todayStr} 상위노출 결과가 도착했어요✨\n`;
     messageText +=
-      `총 키워드 ${totalTrackers}개 중에 ${filteredResults.length}개의 포스팅이 첫번째 화면에 노출됐어요. (${successPercentage}%)\n\n`;
-    messageText += `키워드 | 스마트블럭 | 순위\n`;
-
-    if (filteredResults.length === 0) {
-      messageText += `- (조건에 맞는 결과가 없습니다.)\n`;
-    } else {
-      for (const item of filteredResults) {
-        messageText +=
-          `${item.keywordName} | ${item.smartBlock} | ${item.rank}\n`;
-      }
-    }
+      `총 키워드 ${totalTrackers}개 중에 ${filteredResults.length}개의 포스팅이 첫번째 화면에 노출됐어요. (${successPercentage}%)\n\n오늘 해당 키워드로, 총 ${totalExposure}명에게 노출됐습니다.\n\n`;
 
     messageText += `\n👇상세데이터는 아래 링크에서 확인하세요.`;
 

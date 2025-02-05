@@ -23,11 +23,11 @@ const supabase = createClient(supabaseUrl, supabaseKey, {
 // pgmq용
 const queues = createClient(supabaseUrl, supabaseKey, {
   db: { schema: "pgmq_public" },
-  // auth: {
-  //   autoRefreshToken: false,
-  //   persistSession: false,
-  //   detectSessionInUrl: false,
-  // },
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false,
+    detectSessionInUrl: false,
+  },
 });
 
 /**
