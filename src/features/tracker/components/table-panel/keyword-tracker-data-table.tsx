@@ -37,6 +37,7 @@ import {
   DailyResult,
 } from "@/features/tracker/types/types";
 // utils
+import { devLog } from "@/utils/logUtils";
 import { getTodayInKST } from "@/utils/date";
 
 interface KeywordTrackerDataTableProps {
@@ -74,7 +75,7 @@ export function KeywordTrackerDataTable({
   // do your transform
   const transformTrackerData = useCallback(
     (rows: MergedDataRow[]) => {
-      console.log("🔄 Transforming tracker data...");
+      devLog("🔄 Transforming tracker data...");
       const maxRankPopular = strictMode ? 2 : 7;
       const maxRankNormal = strictMode ? 2 : 3;
 

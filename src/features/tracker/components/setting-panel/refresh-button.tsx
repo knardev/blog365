@@ -46,6 +46,7 @@ export function RefreshButton({ projectSlug }: { projectSlug: string }) {
         const transaction = await fetchTrackerResultRefreshActiveTransaction({
           project_slug: projectSlug,
         });
+        console.log("Active transaction:", transaction);
         if (transaction) {
           setRefreshTransaction(transaction);
         }
@@ -77,6 +78,7 @@ export function RefreshButton({ projectSlug }: { projectSlug: string }) {
             filter: `id=eq.${refreshTransaction.id}`,
           },
           (payload) => {
+            console.log("Refresh transaction updated:", payload.new);
             const updated =
               payload.new as Tables<"tracker_result_refresh_transactions">;
             // 만약 active가 false이면 refresh transaction 초기화

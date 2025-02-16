@@ -11,7 +11,7 @@ export async function fetchTrackerResultRefreshActiveTransaction({
   project_slug,
 }: {
   project_slug: string;
-}): Promise<FetchTrackerResultRefreshTransaction> {
+}): Promise<FetchTrackerResultRefreshTransaction | null> {
   // 1) 프로젝트 ID 찾기
   const { data: projectData, error: projectError } = await createClient()
     .from("projects")
@@ -31,15 +31,19 @@ export async function fetchTrackerResultRefreshActiveTransaction({
   }
 
   const { data, error } =
-    await defineFetchTrackerResultRefreshActiveTransactionQuery(
-      {
-        project_id: projectId,
-      },
-    );
+    await defineFetchTrackerResultRefreshActiveTransactionQuery({
+      project_id: projectId,
+    });
 
   if (error) {
-    console.error("Error adding tracker result refresh transaction:", error);
-    throw new Error("Failed to add tracker result refresh transaction");
+    // 에러 코드 PGRST116: 0 행 반환인 경우, 에러 대신 null을 반환
+    if (error.code === "PGRST116") {
+      console.log("No active refresh transaction found");
+      return null;
+    } else {
+      console.error("Error adding tracker result refresh transaction:", error);
+      throw new Error("Failed to add tracker result refresh transaction");
+    }
   }
 
   return data;

@@ -24,6 +24,9 @@ const supabase = createClient(supabaseUrl, supabaseKey, {
  * 1) Fetches all active blogs for the given projectId.
  * 2) For each blog, fetches blog_slug & SERP results.
  * 3) If the blog_slug is found in SERP results, inserts rows into `keyword_tracker_results`.
+ *
+ * 추가: 동일한 keyword_tracker, date, rank_in_smart_block, blog_id, smart_block_name, post_url 조합이 이미 있으면
+ *       해당 row는 삽입하지 않고, 로그로 출력함.
  */
 export async function processKeywordTrackerResult({
   trackerId,
@@ -73,7 +76,7 @@ export async function processKeywordTrackerResult({
     const blogId = blog.blog_id;
     console.log(`\n[INFO] Processing blogId=${blogId}...`);
 
-    // 2-A) Fetch the blog_slug
+    // 2-A) Fetch the blog_slug and related data
     const { data: blogData, error: blogError } = await supabase
       .from("blogs")
       .select("blog_slug, is_influencer, influencer_connected_blog_slug")
@@ -90,8 +93,8 @@ export async function processKeywordTrackerResult({
     }
 
     const isInfluencer = blogData?.is_influencer;
-    const influencerConnectedBlogSlug = blogData
-      ?.influencer_connected_blog_slug ?? "";
+    const influencerConnectedBlogSlug =
+      blogData?.influencer_connected_blog_slug ?? "";
     // If the blog is an influencer, use the connected blog_slug
     // Otherwise, use the blog_slug
     // const blogSlug = isInfluencer
@@ -130,62 +133,113 @@ export async function processKeywordTrackerResult({
       continue;
     }
 
-    // 2-C) Identify matching items from SERP data
-    const serpResult = serpResults[0];
-    const { smart_block_datas, basic_block_datas } = serpResult;
+    // 2-C) Fetch existing rows for this tracker, date, and blog to avoid duplicates
+    const { data: existingRecords, error: existingError } = await supabase
+      .from("keyword_tracker_results")
+      .select("rank_in_smart_block, smart_block_name, post_url")
+      .eq("keyword_tracker", trackerId)
+      .eq("date", today)
+      .eq("blog_id", blogId);
+
+    if (existingError) {
+      console.error(
+        `[ERROR] Failed to fetch existing keyword_tracker_results for blogId=${blogId}:`,
+        existingError.message,
+      );
+      // 진행할 수 없는 경우, skip
+      continue;
+    }
 
     // We'll collect items here, then insert in bulk:
     const resultsToInsert: TablesInsert<"keyword_tracker_results">[] = [];
 
-    // Check `smart_block_datas`
-    if (smart_block_datas && Array.isArray(smart_block_datas)) {
-      for (const block of smart_block_datas) {
+    // 2-D) Check smart_block_datas
+    if (
+      serpResults[0].smart_block_datas &&
+      Array.isArray(serpResults[0].smart_block_datas)
+    ) {
+      for (const block of serpResults[0].smart_block_datas) {
         const { items } = block;
         if (!items || !Array.isArray(items)) continue;
 
         for (const item of items) {
           // If the siteUrl includes the blogSlug, then record a match
           if (item.siteUrl.includes(blogSlug)) {
-            resultsToInsert.push({
+            const candidate = {
               keyword_tracker: trackerId,
               date: today,
               rank_in_smart_block: item.rank,
               blog_id: blogId,
               smart_block_name: block.title ?? "스마트블럭",
               post_url: item.postUrl,
+            };
+
+            const duplicateExists = existingRecords?.some((record) => {
+              return (
+                record.rank_in_smart_block === candidate.rank_in_smart_block &&
+                record.smart_block_name === candidate.smart_block_name &&
+                record.post_url === candidate.post_url
+              );
             });
+            if (!duplicateExists) {
+              resultsToInsert.push(candidate);
+            } else {
+              console.log(
+                `[INFO] Duplicate found for blogId=${blogId} in smart_block_datas: `,
+                candidate,
+              );
+            }
           }
         }
       }
     }
 
-    // Check `basic_block_datas`
-    if (basic_block_datas && Array.isArray(basic_block_datas)) {
-      for (const block of basic_block_datas) {
+    // 2-E) Check basic_block_datas
+    if (
+      serpResults[0].basic_block_datas &&
+      Array.isArray(serpResults[0].basic_block_datas)
+    ) {
+      for (const block of serpResults[0].basic_block_datas) {
         const { items } = block;
         if (!items || !Array.isArray(items)) continue;
 
         for (const item of items) {
           if (item.siteUrl.includes(blogSlug)) {
-            resultsToInsert.push({
+            const candidate = {
               keyword_tracker: trackerId,
               date: today,
               rank_in_smart_block: item.rank,
               blog_id: blogId,
               smart_block_name: block.title || "Basic Block",
               post_url: item.postUrl,
+            };
+
+            const duplicateExists = existingRecords?.some((record) => {
+              return (
+                record.rank_in_smart_block === candidate.rank_in_smart_block &&
+                record.smart_block_name === candidate.smart_block_name &&
+                record.post_url === candidate.post_url
+              );
             });
+            if (!duplicateExists) {
+              resultsToInsert.push(candidate);
+            } else {
+              console.log(
+                `[INFO] Duplicate found for blogId=${blogId} in basic_block_datas: `,
+                candidate,
+              );
+            }
           }
         }
       }
     }
 
     if (resultsToInsert.length === 0) {
-      console.log(`[INFO] No matching SERP data for blogId=${blogId}.`);
+      console.log(`[INFO] No new matching SERP data for blogId=${blogId}.`);
       continue;
     }
 
-    // 2-D) Insert all matched SERP data
+    // 2-F) Insert all non-duplicate matched SERP data
     console.log(
       `[INFO] Inserting ${resultsToInsert.length} rows for blogId=${blogId}...`,
     );

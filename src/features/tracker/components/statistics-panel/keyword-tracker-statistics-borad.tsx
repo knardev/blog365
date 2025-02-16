@@ -50,6 +50,7 @@ import {
 } from "@/components/custom-ui/base-multi-select";
 // utils
 import { getTodayInKST, getYesterdayInKST } from "@/utils/date";
+import { devLog } from "@/utils/logUtils";
 // types
 import { KeywordCategories } from "@/features/setting/queries/define-fetch-keyword-categories";
 import {
@@ -81,7 +82,7 @@ export function KeywordTrackerStatisticsBoard({
   // do your transform
   const transformTrackerData = useCallback(
     (rows: MergedDataRow[]) => {
-      console.log("🔄 Transforming tracker data...");
+      devLog("🔄 Transforming tracker data...");
       const maxRankPopular = strictMode ? 2 : 7;
       const maxRankNormal = strictMode ? 2 : 3;
 
