@@ -40,7 +40,7 @@ export function AddMessageTargetInput({
     <div className="flex items-center space-x-4">
       <Input
         type="text"
-        placeholder="전화번호 입력"
+        placeholder="예시) 010-1234-5678"
         value={phoneNumber}
         onChange={(e) => setPhoneNumber(e.target.value)}
         disabled={isLoading || isPending}
