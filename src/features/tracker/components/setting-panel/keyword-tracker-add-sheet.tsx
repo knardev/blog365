@@ -1,7 +1,6 @@
 "use client";
 
-// hooks
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useSetRecoilState, useRecoilValue } from "recoil";
 // atoms
@@ -10,6 +9,7 @@ import {
   trackerStatisticsAtom,
   strictModeAtom,
   visibleProjectsBlogsAtom,
+  refreshTransactionAtom,
 } from "@/features/tracker/atoms/states";
 // components
 import {
@@ -47,10 +47,13 @@ import { Progress } from "@/components/ui/progress";
 import { addKeywordTracker } from "@/features/tracker/actions/add-keyword-tracker";
 import { fetchKeywordTrackerWithResultsById } from "@/features/tracker/actions/fetch-single-keyword-tracker-results";
 import { scrapKeywordTrackerResult } from "@/features/tracker/actions/scrap-keyword-tracker-result";
+import { addTrackerResultRefreshTransaction } from "@/features/tracker/actions/add-tracker-result-refresh-transaction";
+import { sendMessageQueue } from "@/features/common/actions/send-message-queue";
 // types
 import { KeywordCategories } from "@/features/setting/queries/define-fetch-keyword-categories";
 import { AddKeywordTracker } from "@/features/tracker/queries/define-add-keyword-tracker";
 import { DailyResult } from "@/features/tracker/types/types";
+// utils
 import { getTodayInKST } from "@/utils/date";
 
 export function KeywordTrackerAddSheet({
@@ -60,15 +63,15 @@ export function KeywordTrackerAddSheet({
   projectSlug: string;
   keywordCategories: KeywordCategories;
 }) {
-  const router = useRouter(); // useRouter 훅 사용
-  const [isSheetOpen, setIsSheetOpen] = useState(false); // 시트 열림 여부
+  const router = useRouter();
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
 
-  // 키워드 추가 시 필요한 상태들
+  // 키워드 추가 관련 상태
   const [keywords, setKeywords] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [isSaving, setIsSaving] = useState(false); // DB에 저장하는 중인지 여부
+  const [isSaving, setIsSaving] = useState(false);
 
-  // 스크래핑 관련 상태들
+  // 스크래핑 관련 상태
   const [isScrapping, setIsScrapping] = useState(false);
   const [newKeywordTrackers, setNewKeywordTrackers] = useState<
     AddKeywordTracker[]
@@ -78,11 +81,12 @@ export function KeywordTrackerAddSheet({
     []
   );
 
-  // 프론트 상태 업데이트를 위한 recoil hook 사용
+  // recoil 상태
   const strictMode = useRecoilValue(strictModeAtom);
   const visibleProjectsBlogs = useRecoilValue(visibleProjectsBlogsAtom);
   const setTrackerTableData = useSetRecoilState(trackerTableDataAtom);
   const setTrackerStatistics = useSetRecoilState(trackerStatisticsAtom);
+  const setRefreshTransaction = useSetRecoilState(refreshTransactionAtom);
 
   const handleSave = async () => {
     if (!keywords.trim()) return;
@@ -103,7 +107,9 @@ export function KeywordTrackerAddSheet({
     }
   };
 
-  const handleScrap = async () => {
+  // 기존의 handleScrap은 잠시 주석처리
+  /*
+  const handleScrap = useCallback(async () => {
     if (isScrapping) return;
     setIsScrapping(true);
     for (const tracker of newKeywordTrackers) {
@@ -182,8 +188,7 @@ export function KeywordTrackerAddSheet({
         );
       });
 
-      // 3) Calculate daily_first_page_exposure
-      //    daily_first_page_exposure = SUM of (catch_success * daily_search_volume) over all dates
+      // daily_first_page_exposure 계산
       const todayString = getTodayInKST();
       if (!resultsMap[todayString]) {
         resultsMap[todayString] = { catch_success: 0, catch_result: [] };
@@ -211,11 +216,78 @@ export function KeywordTrackerAddSheet({
     setIsSheetOpen(false);
     setKeywords("");
     setSelectedCategory(null);
-  };
+  }, [
+    isScrapping,
+    newKeywordTrackers,
+    strictMode,
+    visibleProjectsBlogs,
+    setTrackerTableData,
+    setTrackerStatistics,
+  ]);
 
   useEffect(() => {
     if (newKeywordTrackers.length > 0) handleScrap();
   }, [newKeywordTrackers, handleScrap]);
+  */
+
+  // 새로운 로직: registerScrap - 메시지 큐에 등록하는 서버 액션 수행
+  const registerScrap = useCallback(async () => {
+    if (newKeywordTrackers.length === 0) return;
+    const todayString = getTodayInKST();
+    const newRefreshTransaction = await addTrackerResultRefreshTransaction({
+      project_slug: projectSlug,
+      refresh_date: todayString,
+      total_count: newKeywordTrackers.length,
+    });
+
+    if (!newRefreshTransaction) {
+      console.error("Error adding tracker result refresh transaction");
+      return;
+    }
+    // 새로 생성한 refresh transaction을 atom에 저장
+    setRefreshTransaction(newRefreshTransaction);
+
+    const messages = newKeywordTrackers
+      .filter(
+        (tracker) =>
+          tracker.project_id &&
+          tracker.id &&
+          tracker.keyword_id &&
+          tracker.keywords?.name
+      )
+      .map((tracker) => ({
+        projectId: tracker.project_id as string,
+        trackerId: tracker.id,
+        keywordId: tracker.keyword_id,
+        keywordName: tracker.keywords!.name,
+        refreshTransaction: newRefreshTransaction.id,
+      }));
+
+    if (messages.length === 0) return;
+
+    try {
+      const response = await sendMessageQueue({
+        queueName: "refresh_tracker_result",
+        messages,
+      });
+      if (response.success) {
+        console.log(`${response.count} 개의 메시지가 큐에 등록되었습니다.`);
+      }
+    } catch (error) {
+      console.error("메시지 큐 전송 중 에러:", error);
+    } finally {
+      setNewKeywordTrackers([]);
+      setIsSheetOpen(false);
+      setKeywords("");
+      setSelectedCategory(null);
+    }
+  }, [newKeywordTrackers, projectSlug, setRefreshTransaction]);
+
+  useEffect(() => {
+    if (newKeywordTrackers.length > 0) {
+      registerScrap();
+    }
+  }, [newKeywordTrackers, registerScrap]);
 
   return (
     <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
@@ -246,18 +318,15 @@ export function KeywordTrackerAddSheet({
                 className="w-full justify-between"
               >
                 <SelectValue placeholder="카테고리를 선택하세요" />
-                {/* <ChevronsUpDown className="opacity-50" /> */}
               </SelectTrigger>
               <SelectContent>
                 <SelectGroup>
-                  {/* <SelectLabel>카테고리</SelectLabel> */}
                   {keywordCategories.map((category) => (
                     <SelectItem key={category.id} value={category.id}>
                       {category.name}
                     </SelectItem>
                   ))}
                 </SelectGroup>
-                {/* 하단에 버튼 추가 */}
                 <Button
                   variant="outline"
                   size="sm"
@@ -297,9 +366,10 @@ export function KeywordTrackerAddSheet({
               <DialogTitle>키워드 데이터를 스크래핑중입니다..</DialogTitle>
               <DialogDescription className="break-keep">
                 {newKeywordTrackers.length} 개의 키워드 데이터를 스크래핑
-                중입니다. <br />
+                중입니다.
+                <br />
                 많은 양의 데이터일수록 시간이 소요될 수 있습니다. 중간에
-                나가시게 되면, 스크래핑이 중단됩니다.
+                나가시면 스크래핑이 중단됩니다.
               </DialogDescription>
             </DialogHeader>
             <Progress

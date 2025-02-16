@@ -274,6 +274,10 @@ import_map = "./functions/scrapping-blog-ranks/deno.jsonc"
 verify_jwt = false
 import_map = "./functions/sending-kakao-message/deno.jsonc"
 
+[functions.refresh-tracker-result]
+verify_jwt = false
+import_map = "./functions/refresh-tracker-result/deno.jsonc"
+
 [analytics]
 enabled = true
 port = 54327

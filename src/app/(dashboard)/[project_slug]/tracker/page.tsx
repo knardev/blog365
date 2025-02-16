@@ -12,6 +12,7 @@ import { TablePanelFallback } from "@/features/tracker/components/table-panel/ta
 // actions
 import { getProfileData } from "@/features/common/actions/get-profile";
 import { fetchKeywordCategories } from "@/features/setting/actions/fetch-keyword-categories";
+import { RefreshTrackerResultsRealtimeProvider } from "@/features/tracker/components/refresh-tracker-result-realtime-provider";
 
 export const revalidate = 3600;
 export const maxDuration = 60;
@@ -64,6 +65,7 @@ export default async function Page({
           keywordCategories={categoriesResult ?? []}
         />
       </Suspense>
+      <RefreshTrackerResultsRealtimeProvider />
     </div>
   );
 }

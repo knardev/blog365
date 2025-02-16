@@ -575,11 +575,58 @@ export type Database = {
         }
         Relationships: []
       }
+      tracker_result_refresh_transactions: {
+        Row: {
+          active: boolean | null
+          created_at: string
+          current_count: number | null
+          id: string
+          project_id: string | null
+          refresh_date: string | null
+          total_count: number | null
+        }
+        Insert: {
+          active?: boolean | null
+          created_at?: string
+          current_count?: number | null
+          id?: string
+          project_id?: string | null
+          refresh_date?: string | null
+          total_count?: number | null
+        }
+        Update: {
+          active?: boolean | null
+          created_at?: string
+          current_count?: number | null
+          id?: string
+          project_id?: string | null
+          refresh_date?: string | null
+          total_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tracker_result_refresh_history_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      increment_refresh_transaction: {
+        Args: {
+          transaction_id: string
+          increment_by: number
+        }
+        Returns: {
+          current_count: number
+        }[]
+      }
       random_slug_8: {
         Args: Record<PropertyKey, never>
         Returns: string

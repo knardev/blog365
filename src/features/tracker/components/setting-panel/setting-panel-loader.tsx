@@ -3,6 +3,7 @@ import { ProjectsBlogsSheet } from "@/features/tracker/components/setting-panel/
 import { KeywordTrackerAddSheet } from "@/features/tracker/components/setting-panel/keyword-tracker-add-sheet";
 import { StrictModeSwitch } from "@/features/tracker/components/setting-panel/strict-mode-switch";
 import { ClipboardShareButton } from "@/features/tracker/components/setting-panel/clipboard-share-button";
+import { RefreshButton } from "@/features/tracker/components/setting-panel/refresh-button";
 // actions
 import { fetchProjectsBlogs } from "@/features/tracker/actions/fetch-projects-blogs";
 import { fetchBlog } from "@/features/blogs/actions/fetch-blogs";
@@ -39,6 +40,7 @@ export async function SettingPanelLoader({
       <div className="flex justify-between items-center">
         <StrictModeSwitch />
         <div className="flex gap-2">
+          <RefreshButton projectSlug={projectSlug} />
           <ClipboardShareButton shareLink={shareLink} />
           <ProjectsBlogsSheet
             projectSlug={projectSlug}

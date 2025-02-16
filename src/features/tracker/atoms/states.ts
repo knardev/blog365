@@ -5,6 +5,7 @@ import {
   KeywordTrackerTransformed,
   MergedDataRow,
 } from "@/features/tracker/types/types";
+import { Tables } from "@/types/database.types";
 
 /**
  * 엄격 모드(Strict Mode)를 전역으로 관리하는 Recoil atom
@@ -45,4 +46,11 @@ export const trackerTableDataAtom = atom<KeywordTrackerTransformed[]>({
 export const trackerStatisticsAtom = atom<KeywordTrackerTransformed[]>({
   key: "trackerStatisticsAtom",
   default: [],
+});
+
+export const refreshTransactionAtom = atom<
+  Tables<"tracker_result_refresh_transactions"> | null
+>({
+  key: "refreshTransactionAtom",
+  default: null,
 });
