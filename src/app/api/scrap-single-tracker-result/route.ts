@@ -1,6 +1,6 @@
 import { scrapSingleTrackerResult } from "./actions";
 
-export const maxDuration = 5;
+export const maxDuration = 60;
 
 export async function POST(request: Request) {
   const incomingKey = request.headers.get("X-Secret-Key");
