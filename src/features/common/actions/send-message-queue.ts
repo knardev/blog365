@@ -27,7 +27,7 @@ export const sendMessageQueue = async ({
   const { error } = await queues.rpc("send_batch", {
     queue_name: queueName,
     messages,
-    sleep_seconds: 0,
+    sleep_seconds: 5,
   });
 
   if (error) {

@@ -181,7 +181,7 @@ Deno.serve((req: Request) => {
             "read",
             {
               queue_name: "refresh_tracker_result",
-              sleep_seconds: 0,
+              sleep_seconds: 60,
               n: MESSAGE_LIMIT,
             },
           );
