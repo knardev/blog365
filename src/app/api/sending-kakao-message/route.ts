@@ -2,7 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { sendKakaoMessageAction } from "./actions";
 
 // export const runtime = "edge"; // (원한다면 사용)
-export const maxDuration = 5;
+export const maxDuration = 60;
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE ?? "";

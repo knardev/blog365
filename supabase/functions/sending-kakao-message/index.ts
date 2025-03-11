@@ -153,7 +153,7 @@ Deno.serve((req: Request) => {
             "read",
             {
               queue_name: "send_kakao_message",
-              sleep_seconds: 0, // 즉시 반환
+              sleep_seconds: 60, // 즉시 반환
               n: MESSAGE_LIMIT,
             },
           );

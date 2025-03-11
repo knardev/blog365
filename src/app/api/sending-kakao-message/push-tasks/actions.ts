@@ -86,7 +86,7 @@ export async function pushKakaoMessageTasks() {
   const { error: queueError } = await queues.rpc("send_batch", {
     queue_name: "send_kakao_message",
     messages: messages,
-    sleep_seconds: 0,
+    sleep_seconds: 60,
   });
 
   if (queueError) {
